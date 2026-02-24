@@ -24,28 +24,37 @@ export default function Scanner() {
             setLoadingData(false);
         };
         loadDocs();
+    }, []);
 
-        // Inicializar escáner QR al montar el componente
-        const scanner = new Html5QrcodeScanner("reader", {
-            qrbox: { width: 250, height: 250 },
-            fps: 10
-        });
+    useEffect(() => {
+        let scanner = null;
 
-        scanner.render(
-            (decodedText) => {
-                handleScanCode(decodedText);
-                scanner.clear(); // Detener al escanear
-            },
-            (error) => {
-                // Ignorar errores continuos de no detección de QR
-            }
-        );
+        // Inicializar escáner QR solo cuando los datos hayan cargado y el div "reader" exista
+        if (!loadingData && !scanResult) {
+            scanner = new Html5QrcodeScanner("reader", {
+                qrbox: { width: 250, height: 250 },
+                fps: 10
+            });
+
+            scanner.render(
+                (decodedText) => {
+                    handleScanCode(decodedText);
+                    scanner.clear(); // Detener al escanear
+                },
+                (error) => {
+                    // Ignorar errores continuos de no detección de QR
+                }
+            );
+        }
 
         return () => {
-            // Limpiar al desmontar
-            scanner.clear().catch(error => console.error("Failed to clear html5QrcodeScanner. ", error));
+            // Limpiar al desmontar o cuando el escáner se oculta
+            if (scanner) {
+                scanner.clear().catch(error => console.error("Failed to clear html5QrcodeScanner. ", error));
+            }
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadingData, scanResult]);
 
     const handleScanCode = (code) => {
         setScanResult(code);
