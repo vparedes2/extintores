@@ -17,6 +17,16 @@ export default function ChecklistForm() {
         parsedVto = String(initialData.Vto_Carga).substring(0, 7);
     }
 
+    // Parsear Vto_PH para extraer solo el año (los inputs type="number" fallan si hay texto adicional)
+    let parsedVtoPH = '';
+    if (initialData.Vto_PH) {
+        const phStr = String(initialData.Vto_PH);
+        const match = phStr.match(/\d{4}/) || phStr.match(/\d{2}/);
+        if (match) {
+            parsedVtoPH = match[0].length === 2 ? `20${match[0]}` : match[0];
+        }
+    }
+
     const [formData, setFormData] = useState({
         extintorId: initialExtintorId,
         nRecipiente: initialData.N_Recipiente || '',
@@ -26,7 +36,7 @@ export default function ChecklistForm() {
         inspecciono: '',
 
         // Dates manually entered
-        vencimientoPH: initialData.Vto_PH || '',
+        vencimientoPH: parsedVtoPH,
         vtoCarga: parsedVto,
         capacidad: initialData.Capacidad || '',
 
