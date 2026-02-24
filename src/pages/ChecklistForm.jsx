@@ -21,9 +21,16 @@ export default function ChecklistForm() {
     let parsedVtoPH = '';
     if (initialData.Vto_PH) {
         const phStr = String(initialData.Vto_PH);
-        const match = phStr.match(/\d{4}/) || phStr.match(/\d{2}/);
-        if (match) {
-            parsedVtoPH = match[0].length === 2 ? `20${match[0]}` : match[0];
+        // Buscar el primer bloque de 4 dígitos que parezca un año (ej. 2024, 2029)
+        const match4 = phStr.match(/(20\d{2})/);
+        if (match4) {
+            parsedVtoPH = match4[0];
+        } else {
+            // Si no hay 4 dígitos, buscar 2 dígitos al final o sueltos que parezcan año
+            const match2 = phStr.match(/(\d{2})/);
+            if (match2) {
+                parsedVtoPH = `20${match2[0]}`;
+            }
         }
     }
 
