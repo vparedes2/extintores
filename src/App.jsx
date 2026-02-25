@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare } from 'lucide-react';
+import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText } from 'lucide-react';
 import './index.css';
 
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,7 @@ import Scanner from './pages/Scanner';
 import AltaForm from './pages/AltaForm';
 import BajaForm from './pages/BajaForm';
 import ChecklistForm from './pages/ChecklistForm';
+import Reportes from './pages/Reportes';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/alta" element={<AltaForm />} />
           <Route path="/baja" element={<BajaForm />} />
           <Route path="/checklist" element={<ChecklistForm />} />
+          <Route path="/reportes" element={<Reportes />} />
         </Routes>
       </main>
 
@@ -50,6 +52,9 @@ function App() {
         </Link>
         <Link to="/checklist" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <CheckSquare size={24} /> <span style={{ fontSize: '0.75rem', marginTop: '4px' }}>Check</span>
+        </Link>
+        <Link to="/reportes" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <FileText size={24} /> <span style={{ fontSize: '0.75rem', marginTop: '4px' }}>PDF</span>
         </Link>
       </nav>
     </BrowserRouter>
