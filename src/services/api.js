@@ -76,8 +76,14 @@ export const fetchExtintores = async () => {
                 const ts = new Date(b.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
-                    if (ts > eq.Ultimo_Movimiento) {
-                        eq.Estado_Disp = b.Destino === 'Recarga' ? 'En reparación' : `Baja: ${b.Destino}`;
+                    // Usar >= en vez de > por si se guardan muy rápido o falla el delta de milisegundos
+                    if (ts >= eq.Ultimo_Movimiento) {
+                        const destinoStr = String(b.Destino).toLowerCase();
+                        if (destinoStr.includes('recarga') || destinoStr.includes('mantenimiento')) {
+                            eq.Estado_Disp = 'En reparación';
+                        } else {
+                            eq.Estado_Disp = `Baja: ${b.Destino}`;
+                        }
                         eq.Ultimo_Movimiento = ts;
                         equipos.set(id, eq);
                     }
