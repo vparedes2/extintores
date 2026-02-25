@@ -48,9 +48,10 @@ export default function Dashboard() {
                     const vtoPH = ext.Vto_PH ? parseInt(ext.Vto_PH) : null;
                     if (vtoPH && vtoPH < now.getFullYear()) isVencido = true;
 
-                    if (dispLower.includes('no disponible') || dispLower.includes('reparaci')) {
+                    // Lógica estricta de Dashboard
+                    if (dispLower.includes('no disponible') || dispLower.includes('reparaci') || dispLower.includes('recarga')) {
                         enRecarga++;
-                    } else if (isVencido) {
+                    } else if (dispLower.includes('baja') || isVencido) {
                         vencidosOBaja++;
                     } else if (dispLower.includes('disponible') || dispLower.includes('afectado')) {
                         operativos++;
@@ -61,7 +62,7 @@ export default function Dashboard() {
                     { label: 'Total Registrados', value: total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
                     { label: 'Operativos O.K.', value: operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
                     { label: 'En Reparación', value: enRecarga, icon: <Wrench size={24} />, color: '#f59e0b' },
-                    { label: 'Vencidos', value: vencidosOBaja, icon: <ShieldAlert size={24} />, color: '#ef4444' }
+                    { label: 'Vencidos / Baja', value: vencidosOBaja, icon: <ShieldAlert size={24} />, color: '#ef4444' }
                 ]);
             }
             setLoading(false);

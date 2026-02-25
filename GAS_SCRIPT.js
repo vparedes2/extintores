@@ -72,25 +72,33 @@ function doPost(e) {
             ]);
         } else if (action === 'get_all') {
             // Manejar solicitud especial de lectura para sortear el bloqueo CORS de GET
-            const dataRange = sheet.getDataRange();
-            const values = dataRange.getValues();
 
-            if (values.length <= 1) {
-                return ContentService.createTextOutput(JSON.stringify({ "status": "success", "data": [] })).setMimeType(ContentService.MimeType.JSON);
-            }
-
-            const headers = values[0];
-            const rows = values.slice(1);
-
-            const jsonData = rows.map(row => {
-                let obj = {};
-                headers.forEach((header, index) => {
-                    obj[header] = row[index];
+            const getAllDataFromSheet = (sheetObj) => {
+                if (!sheetObj) return [];
+                const dataRange = sheetObj.getDataRange();
+                const values = dataRange.getValues();
+                if (values.length <= 1) return [];
+                const headers = values[0];
+                const rows = values.slice(1);
+                return rows.map(row => {
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = row[index];
+                    });
+                    return obj;
                 });
-                return obj;
-            });
+            };
 
-            return ContentService.createTextOutput(JSON.stringify({ "status": "success", "data": jsonData })).setMimeType(ContentService.MimeType.JSON);
+            const dataAlta = getAllDataFromSheet(spreadsheet.getSheetByName('ALTA'));
+            const dataBaja = getAllDataFromSheet(spreadsheet.getSheetByName('BAJA'));
+            const dataChecklist = getAllDataFromSheet(spreadsheet.getSheetByName('CHECKLIST'));
+
+            return ContentService.createTextOutput(JSON.stringify({
+                "status": "success",
+                "data": dataAlta,
+                "dataBaja": dataBaja,
+                "dataChecklist": dataChecklist
+            })).setMimeType(ContentService.MimeType.JSON);
         }
 
         return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);

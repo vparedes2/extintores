@@ -42,7 +42,50 @@ export const fetchExtintores = async () => {
         const json = await response.json();
 
         if (json.status === 'success') {
-            return json.data || [];
+            const altas = json.data || [];
+            const bajas = json.dataBaja || [];
+            const checklists = json.dataChecklist || [];
+
+            // Combinar la historia para encontrar el estado real final
+            const equipos = new Map();
+
+            // 1. Cargar base inicial de ALTA
+            altas.forEach(a => {
+                equipos.set(String(a.N_Interno).trim(), { ...a, Ultimo_Movimiento: new Date(a.Timestamp) });
+            });
+
+            // 2. Mapear CHECKLISTS (Actualizan ubicación y estado de disponibilidad)
+            checklists.forEach(c => {
+                const id = String(c.N_Interno).trim();
+                const ts = new Date(c.Timestamp);
+                if (equipos.has(id)) {
+                    let eq = equipos.get(id);
+                    if (ts > eq.Ultimo_Movimiento) {
+                        eq.Estado_Disp = c.Estado_Disp;
+                        eq.Ubicacion = c.Ubicacion;
+                        eq.Vto_Carga = c.Vto_Carga;
+                        eq.Ultimo_Movimiento = ts;
+                        equipos.set(id, eq);
+                    }
+                }
+            });
+
+            // 3. Mapear BAJAS (Sobrescriben el estado a "No Disponible" o similar)
+            bajas.forEach(b => {
+                const id = String(b.N_Interno).trim();
+                const ts = new Date(b.Timestamp);
+                if (equipos.has(id)) {
+                    let eq = equipos.get(id);
+                    if (ts > eq.Ultimo_Movimiento) {
+                        eq.Estado_Disp = b.Destino === 'Recarga' ? 'En reparación' : `Baja: ${b.Destino}`;
+                        eq.Ultimo_Movimiento = ts;
+                        equipos.set(id, eq);
+                    }
+                }
+            });
+
+            return Array.from(equipos.values());
+
         } else {
             console.error("Error desde el Sheet:", json.message);
             return [];
