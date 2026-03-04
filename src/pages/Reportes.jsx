@@ -19,10 +19,26 @@ export default function Reportes() {
                 inspector: inspector
             });
 
-            if (res.status === 'success' && res.pdfUrl) {
-                setPdfUrl(res.pdfUrl);
-                // Intentar abrir automáticamente en una pestaña nueva
-                window.open(res.pdfUrl, '_blank');
+            if (res.status === 'success' && res.pdfBase64) {
+                // Convertir Base64 a Blob
+                const byteCharacters = atob(res.pdfBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+                // Crear URL del Blob y forzar descarga
+                const blobUrl = URL.createObjectURL(blob);
+                setPdfUrl(blobUrl);
+
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = res.fileName || `Reporte_${fecha}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             } else {
                 alert('No se encontraron registros o hubo un error: ' + (res.message || 'Error desconocido'));
             }
@@ -79,8 +95,8 @@ export default function Reportes() {
                 {pdfUrl && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid var(--success)', textAlign: 'center' }}>
                         <p style={{ color: 'var(--success)', marginBottom: '0.5rem', fontWeight: 'bold' }}>¡PDF Generado exitosamente!</p>
-                        <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>
-                            Clic aquí para abrir (si no se abrió solo)
+                        <a href={pdfUrl} download={`Reporte_${fecha}.pdf`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>
+                            Clic aquí para descargar (si no se bajó solo)
                         </a>
                     </div>
                 )}
