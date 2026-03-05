@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwYzD958DwxHwU2xYVhlBmWm9OyCHSRGeD_3pI05fASgdyVGc5oqokjy4pz8ZXWk_uI-w/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxd9vSuzSI7q42oNMS-TKFJqGSisNcd3eltBAhimWUR6rMnHVNEX-aIVBZ-BgJhNol4oQ/exec";
 
 
 export const sendToSheet = async (data) => {
