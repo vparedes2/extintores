@@ -31,7 +31,7 @@ function doPost(e) {
             sheet = spreadsheet.insertSheet(sheetName);
             // Configurar cabeceras iniciales si la hoja es nueva
             if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Placa_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso', 'Remito_Prov']);
-            if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Motivo']);
+            if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Motivo', 'Proveedor', 'Remito_Salida']);
             if (action === 'checklist') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Fecha', 'Inspector', 'Placa_ID', 'Vto_PH', 'Vto_Carga', 'Capacidad_Valor', 'Agente', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso']);
         }
 
@@ -45,7 +45,7 @@ function doPost(e) {
                 data.tarjetaIdentificacion, data.manometro, data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto, data.soporte, data.estadoRecipiente, data.senalizacionAcceso, data.remitoProveedor
             ]);
         } else if (action === 'baja') {
-            sheet.appendRow([timestamp, data.extintorId, data.destino, data.observaciones]);
+            sheet.appendRow([timestamp, data.extintorId, data.destino, data.observaciones, data.proveedor, data.remitoSalida]);
         } else if (action === 'checklist') {
             sheet.appendRow([
                 timestamp, data.extintorId, data.nRecipiente, data.ubicacion, data.estadoDisponibilidad, data.fecha, data.inspecciono,

@@ -15,7 +15,9 @@ export default function BajaForm() {
         extintorId: initialExtintorId,
         motivo: '',
         observaciones: '',
-        destino: 'Recarga'
+        destino: 'Recarga',
+        proveedor: '',
+        remitoSalida: ''
     });
 
     const handleChange = (e) => {
@@ -65,6 +67,16 @@ export default function BajaForm() {
                         <option value="Mantenimiento">Mantenimiento Correctivo / Prueba Hidráulica</option>
                         <option value="Baja Definitiva">Baja Definitiva (Rotura/Descarte)</option>
                     </select>
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Proveedor / Destinatario (Opcional)</label>
+                    <input name="proveedor" value={formData.proveedor} onChange={handleChange} placeholder="Ej: Matafuegos SA" />
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Remito de Salida (Opcional)</label>
+                    <input name="remitoSalida" value={formData.remitoSalida} onChange={handleChange} placeholder="Ej: R-0002-1234" />
                 </div>
 
                 <div>
