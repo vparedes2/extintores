@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Search, Download, ShieldAlert } from 'lucide-react';
-import { sendToSheet } from '../services/api';
+import { fetchExtintores } from '../services/api';
 
 export default function Panol() {
     const [extintoresPañol, setExtintoresPañol] = useState([]);
@@ -10,47 +10,23 @@ export default function Panol() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await sendToSheet({ action: 'get_all' });
-                if (response.status === 'success') {
-                    const altas = response.data || [];
-                    const checklist = response.dataChecklist || [];
-
-                    // Mapa para almacenar el estado MÁS RECIENTE de cada extintor
-                    const estadoActual = new Map();
-
-                    // 1. Cargar estado inicial desde ALTA
-                    altas.forEach(item => {
-                        if (item.N_Interno) {
-                            estadoActual.set(item.N_Interno, {
-                                nInterno: item.N_Interno,
-                                nRecipiente: item.N_Recipiente,
-                                ubicacion: item.Ubicacion,
-                                estado: item.Estado_Disp,
-                                fechaBase: item.Timestamp,
-                                tipo: item.Agente,
-                                capacidad: item.Capacidad
-                            });
-                        }
+                const data = await fetchExtintores();
+                if (data && data.length > 0) {
+                    const enPañol = data.filter(ext => {
+                        const estado = (ext.Estado_Disp || "").toLowerCase();
+                        return estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible');
                     });
 
-                    // 2. Sobrescribir con el estado más reciente desde CHECKLIST si existe
-                    // Ordenamos por fecha para procesar del más antiguo al más nuevo (quedará el último)
-                    const checklistOrds = [...checklist].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
-                    checklistOrds.forEach(item => {
-                        if (item.N_Interno && estadoActual.has(item.N_Interno)) {
-                            const current = estadoActual.get(item.N_Interno);
-                            current.estado = item.Estado_Disp;
-                            current.ubicacion = item.Ubicacion;
-                            current.ultimaRevision = item.Timestamp;
-                        }
-                    });
+                    const mapped = enPañol.map(ext => ({
+                        nInterno: ext.N_Interno,
+                        nRecipiente: ext.N_Recipiente,
+                        ubicacion: ext.Ubicacion,
+                        estado: ext.Estado_Disp,
+                        tipo: ext.Agente,
+                        capacidad: ext.Capacidad
+                    }));
 
-                    // 3. Filtrar SOLO los que están "No Disponible" (En reparación/Pañol)
-                    const enPañol = Array.from(estadoActual.values()).filter(ext =>
-                        ext.estado && ext.estado.toLowerCase().includes('no disponible')
-                    );
-
-                    setExtintoresPañol(enPañol);
+                    setExtintoresPañol(mapped);
                 }
             } catch (error) {
                 console.error("Error fetching pañol data", error);
