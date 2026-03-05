@@ -38,9 +38,9 @@ export default function Panol() {
     }, []);
 
     const filteredList = extintoresPañol.filter(ext =>
-        (ext.nInterno && ext.nInterno.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (ext.nInterno && String(ext.nInterno).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (ext.nRecipiente && String(ext.nRecipiente).toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (ext.ubicacion && ext.ubicacion.toLowerCase().includes(searchTerm.toLowerCase()))
+        (ext.ubicacion && String(ext.ubicacion).toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const handleGenerateRemito = () => {
