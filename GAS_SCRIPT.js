@@ -83,6 +83,70 @@ function doPost(e) {
                 "dataBaja": dataBaja,
                 "dataChecklist": dataChecklist
             })).setMimeType(ContentService.MimeType.JSON);
+        } else if (action === 'export_remito') {
+            // == LOGICA DE GENERACION DE REMITO ==
+            let sheetRemito = spreadsheet.getSheetByName('REMITO_TEMPLATE');
+
+            if (!sheetRemito) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Falta pestaña REMITO_TEMPLATE. Por favor créala en el Google Sheet." })).setMimeType(ContentService.MimeType.JSON);
+            }
+
+            const extintores = data.extintores || [];
+            if (extintores.length === 0) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay extintores seleccionados para el remito." })).setMimeType(ContentService.MimeType.JSON);
+            }
+
+            // 1. Insertar la fecha de hoy y la cantidad
+            const hoyStr = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+            sheetRemito.getRange("A4").setValue("Fecha: " + hoyStr); // Ejemplo de ubicación
+            sheetRemito.getRange("A5").setValue("Cantidad de Equipos: " + extintores.length); // Ejemplo de ubicación
+
+            // 2. Limpiar filas antiguas (asumimos a partir de fila 10)
+            let dataStartRow = 10;
+            let lastRow = sheetRemito.getLastRow();
+            if (lastRow >= dataStartRow) {
+                sheetRemito.getRange(dataStartRow, 1, lastRow - (dataStartRow - 1), sheetRemito.getLastColumn()).clearContent();
+            }
+
+            // 3. Preparar matriz de datos: N_Interno, N_Recipiente, Ubicación, Capacidad, Agente, Vto_PH, Vto_Carga
+            let finalOutput = [];
+            extintores.forEach((ext, idx) => {
+                let row = new Array(10).fill(""); // Ajusta según la cantidad de columnas de tu plantilla
+                row[0] = idx + 1; // Item
+                row[1] = ext.N_Interno || "";
+                row[2] = ext.N_Recipiente || "";
+                row[3] = ext.Ubicacion || "";
+                row[4] = ext.Capacidad ? ext.Capacidad + " kg" : "";
+                row[5] = ext.Agente || "";
+                row[6] = ext.Vto_PH || "";
+                row[7] = ext.Vto_Carga || "";
+                finalOutput.push(row);
+            });
+
+            //Pegar datos
+            sheetRemito.getRange(dataStartRow, 1, finalOutput.length, 10).setValues(finalOutput);
+            SpreadsheetApp.flush();
+
+            // Exportar a PDF (base64)
+            const url = spreadsheet.getUrl().replace(/\/edit.*$/, '');
+            const sheetId = sheetRemito.getSheetId();
+            // exportFormat=pdf (portrait)
+            const pdfUrl = url + '/export?exportFormat=pdf&format=pdf&size=A4&portrait=true&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=' + sheetId;
+
+            try { DriveApp.getFileById(spreadsheet.getId()); } catch (e) { }
+
+            const token = ScriptApp.getOAuthToken();
+            const response = UrlFetchApp.fetch(pdfUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+
+            const blob = response.getBlob();
+            const base64Data = Utilities.base64Encode(blob.getBytes());
+
+            return ContentService.createTextOutput(JSON.stringify({
+                "status": "success",
+                "pdfBase64": base64Data,
+                "fileName": "Remito_Salida_" + hoyStr.replace(/\//g, "-") + ".pdf"
+            })).setMimeType(ContentService.MimeType.JSON);
+
         } else if (action === 'export_pdf') {
             // == LOGICA DE GENERACION DE PDF ==
             const targetDateStr = data.fecha; // ej. "2026-02-25"

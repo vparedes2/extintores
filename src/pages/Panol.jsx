@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Search, Download, ShieldAlert } from 'lucide-react';
-import { fetchExtintores } from '../services/api';
+import { fetchExtintores, sendToSheet } from '../services/api';
 
 export default function Panol() {
     const [extintoresPañol, setExtintoresPañol] = useState([]);
@@ -43,8 +43,45 @@ export default function Panol() {
         (ext.ubicacion && String(ext.ubicacion).toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const handleGenerateRemito = () => {
-        alert("Generación de comprobante en PDF en desarrollo...");
+    const handleGenerateRemito = async () => {
+        if (filteredList.length === 0) {
+            alert("No hay extintores en la lista para generar un remito.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await sendToSheet({
+                action: 'export_remito',
+                extintores: filteredList
+            });
+
+            if (response && response.pdfBase64) {
+                const byteCharacters = atob(response.pdfBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                const finalBlobUrl = URL.createObjectURL(blob);
+
+                // Forzar descarga directa (ideal para celulares y web)
+                const link = document.createElement('a');
+                link.href = finalBlobUrl;
+                link.download = response.fileName || 'Remito_Salida.pdf';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('Error al generar el remito: ' + (response?.message || 'Respuesta vacía'));
+            }
+        } catch (error) {
+            console.error("Error generating remito", error);
+            alert("Fallo la conexión con el servidor al generar el remito.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
