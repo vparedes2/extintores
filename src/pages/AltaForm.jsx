@@ -20,7 +20,8 @@ export default function AltaForm() {
         seguroPrecinto: 'B',
         soporte: 'B',
         estadoRecipiente: 'B',
-        senalizacionAcceso: 'B'
+        senalizacionAcceso: 'B',
+        remitoProveedor: ''
     });
 
     const checklistItems = [
@@ -135,6 +136,11 @@ export default function AltaForm() {
                         <option value="Afectado a locación">Afectado a locación (Uso activo)</option>
                         <option value="No Disponible">No Disponible / En Reparación</option>
                     </select>
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Remito Proveedor (Opcional si es ingreso nuevo/reparado)</label>
+                    <input name="remitoProveedor" value={formData.remitoProveedor} onChange={handleChange} placeholder="Ej. R-0001-4567" />
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>

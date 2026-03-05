@@ -30,7 +30,7 @@ function doPost(e) {
         if (!sheet) {
             sheet = spreadsheet.insertSheet(sheetName);
             // Configurar cabeceras iniciales si la hoja es nueva
-            if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Placa_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso']);
+            if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Placa_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso', 'Remito_Prov']);
             if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Motivo']);
             if (action === 'checklist') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Fecha', 'Inspector', 'Placa_ID', 'Vto_PH', 'Vto_Carga', 'Capacidad_Valor', 'Agente', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso']);
         }
@@ -42,7 +42,7 @@ function doPost(e) {
             const locFinal = data.ubicacionSelect + " " + data.ubicacionManual;
             sheet.appendRow([
                 timestamp, data.nInterno, data.nRecipiente, locFinal.trim(), data.estadoDisponibilidad, data.vtoPH, data.vtoCarga, data.capacidad, data.agente,
-                data.tarjetaIdentificacion, data.manometro, data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto, data.soporte, data.estadoRecipiente, data.senalizacionAcceso
+                data.tarjetaIdentificacion, data.manometro, data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto, data.soporte, data.estadoRecipiente, data.senalizacionAcceso, data.remitoProveedor
             ]);
         } else if (action === 'baja') {
             sheet.appendRow([timestamp, data.extintorId, data.destino, data.observaciones]);
@@ -114,20 +114,17 @@ function doPost(e) {
             const clHeaders = clData[0];
             const clRows = clData.slice(1);
 
-            // Buscar índice de la columna "Fecha"
-            let fechaIndex = clHeaders.indexOf('Fecha');
-            if (fechaIndex === -1) fechaIndex = 5; // fallback
+            // LA FECHA SIEMPRE ES EL ÍNDICE 5 en la inserción de checklist
+            // [timestamp (0), id (1), nRec(2), ubic(3), estDisp(4), fecha (5), ...]
+            let fechaIndex = 5;
 
             const rowsToExport = clRows.filter(row => {
                 let cellVal = row[fechaIndex];
                 if (!cellVal) return false;
-
-                // Si es un objeto Date de Google Apps Script:
                 if (cellVal instanceof Date) {
                     let cellDateStr = Utilities.formatDate(cellVal, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
                     return cellDateStr === targetDateStr;
                 }
-                // Si es un texto tipo "yyyy-MM-dd" o "dd/MM/yyyy"
                 const strVal = String(cellVal).trim();
                 return strVal === targetDateStr || strVal.includes(targetDateStr) || strVal === formattedTarget;
             });
@@ -136,45 +133,95 @@ function doPost(e) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay checklists para la fecha seleccionada" })).setMimeType(ContentService.MimeType.JSON);
             }
 
-            // Llenar cabeceras en Hoja 3
-            let h3Data = sheetHoja3.getDataRange().getValues();
-            let startRow = -1;
+            // ===================================
+            // INSERCIÓN DE METADATOS Y TABLA
+            // ===================================
 
-            for (let r = 0; r < h3Data.length; r++) {
-                for (let c = 0; c < h3Data[r].length; c++) {
-                    let val = String(h3Data[r][c]).toLowerCase().trim();
-                    if (val.includes("fecha:")) { sheetHoja3.getRange(r + 1, c + 2).setValue(formattedTarget); }
-                    if (val.includes("próxima inspección:") || val.includes("proxima inspeccion:")) { sheetHoja3.getRange(r + 1, c + 2).setValue(formattedNext); }
-                    if (val.includes("inspeccionó:") || val.includes("inspecciono:")) { sheetHoja3.getRange(r + 1, c + 2).setValue(data.inspector); }
+            // 1. Encontrar y llenar metadatos dinámicamente SIN sobreescribir la etiqueta visual
+            // 1. Llenar metadatos respetando celdas combinadas y concatenando
+            // A7 (combinada B7), C7 (combinada F7), G7 (combinada P7)
 
-                    if (val.includes("n_interno") || val.includes("n interno") || val.includes("nº interno")) {
-                        if (startRow === -1) startRow = r + 1; // Fila donde empieza la data (después de cabeceras)
-                    }
-                }
-            }
+            let currentA7 = String(sheetHoja3.getRange("A7").getValue() || "Fecha de Inspección: ");
+            let currentC7 = String(sheetHoja3.getRange("C7").getValue() || "Próxima inspección: ");
+            let currentG7 = String(sheetHoja3.getRange("G7").getValue() || "Inspeccionó: ");
 
-            if (startRow === -1) startRow = 3; // Fallback fila 4 (0-indexed es 3)
+            // Limpiar si ya tenía un valor antes (dividimos por ":" y tomamos la etiqueta original)
+            let baseA7 = currentA7.includes(":") ? currentA7.split(":")[0] + ": " : currentA7 + " ";
+            let baseC7 = currentC7.includes(":") ? currentC7.split(":")[0] + ": " : currentC7 + " ";
+            let baseG7 = currentG7.includes(":") ? currentG7.split(":")[0] + ": " : currentG7 + " ";
 
+            sheetHoja3.getRange("A7").setValue(baseA7 + formattedTarget);
+            sheetHoja3.getRange("C7").setValue(baseC7 + formattedNext);
+            sheetHoja3.getRange("G7").setValue(baseG7 + data.inspector);
+
+            // 2. Insertar los datos en posiciones FIJAS Y EXACTAS.
+            let dataStartRow = 11;
             let lastRow = sheetHoja3.getLastRow();
-            if (lastRow > startRow) {
-                // Limpiar datos viejos
-                sheetHoja3.getRange(startRow + 1, 1, lastRow - startRow, sheetHoja3.getLastColumn()).clearContent();
+            if (lastRow >= dataStartRow) {
+                sheetHoja3.getRange(dataStartRow, 1, lastRow - (dataStartRow - 1), sheetHoja3.getLastColumn()).clearContent();
             }
 
-            // Escribir los nuevos datos
-            sheetHoja3.getRange(startRow + 1, 1, rowsToExport.length, rowsToExport[0].length).setValues(rowsToExport);
+            let finalOutput = [];
+
+            // 3. Emparejar a columnas físicas exactas de A(0) a O(14) extrayendo desde POSICIONES ABSOLUTAS
+            // El array interno clRow tiene 19 valores según appendRow:
+            // 0:timestamp, 1:extintorId, 2:nRecipiente, 3:ubicacion, 4:estadoDisponibilidad, 
+            // 5:fecha, 6:inspecciono, 7:tarjetaIdentificacion, 8:vencimientoPH, 9:vtoCarga, 
+            // 10:capacidad, 11:agenteExtintor, 12:manometro, 13:manijaPalanca, 14:mangueraBoquilla, 
+            // 15:seguroPrecinto, 16:soporte, 17:estadoRecipiente, 18:senalizacionAcceso
+
+            rowsToExport.forEach(rowChecklist => {
+                // Aumentamos a 16 elementos porque dejaremos A (0) en blanco para la numeración.
+                let newRow = new Array(16).fill("");
+
+                newRow[0] = "";               // A: Número correlativo (lo dejamos en blanco o el usuario lo numera manual)
+                newRow[1] = rowChecklist[2];  // B: Nº Recipiente
+                newRow[2] = rowChecklist[3];  // C: Ubicación
+                newRow[3] = rowChecklist[7];  // D: Placa de id
+                newRow[4] = rowChecklist[8];  // E: Vencimiento PH
+                newRow[5] = rowChecklist[9];  // F: Estado de carga (Vto.)
+                newRow[6] = rowChecklist[10]; // G: Capacidad (kg)
+                newRow[7] = rowChecklist[11]; // H: Agente extintor
+                newRow[8] = rowChecklist[12]; // I: Manómetro
+                newRow[9] = rowChecklist[13]; // J: Manija y palanca
+                newRow[10] = rowChecklist[14]; // K: Manguera/boquilla
+                newRow[11] = rowChecklist[15]; // L: Seguro/precinto
+                newRow[12] = rowChecklist[16]; // M: Soporte
+                newRow[13] = rowChecklist[17]; // N: Estado recipiente
+                newRow[14] = rowChecklist[18]; // O: Señalización y acceso
+                // OJO: Hay una columna extra física en la foto antes de Placa si P es el final, pero P es la 16 (0-15).
+
+                finalOutput.push(newRow);
+            });
+
+            if (finalOutput.length > 0) {
+                // Pegar EXACTAMENTE los 16 elementos para no desalinear
+                sheetHoja3.getRange(dataStartRow, 1, finalOutput.length, 16).setValues(finalOutput);
+            }
 
             SpreadsheetApp.flush(); // Forzar guardado
 
-            // Generar URL del PDF
             const url = spreadsheet.getUrl().replace(/\/edit.*$/, '');
             const sheetId = sheetHoja3.getSheetId();
-            // exportFormat=pdf es para exportación nativa
-            const pdfUrl = url + '/export?exportFormat=pdf&format=pdf&size=A4&portrait=true&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=' + sheetId;
+            // exportFormat=pdf es para exportación nativa. portrait=false cambia a APAISADO (landscape).
+            const pdfUrl = url + '/export?exportFormat=pdf&format=pdf&size=A4&portrait=false&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=' + sheetId;
+
+            // Truco para obligar a Apps Script a pedir permisos de Drive al autorizar (si no los tiene)
+            try { DriveApp.getFileById(spreadsheet.getId()); } catch (e) { }
+
+            // Descargar el PDF desde el propio servidor de Google para evitar que el celular intercepte la URL
+            const token = ScriptApp.getOAuthToken();
+            const response = UrlFetchApp.fetch(pdfUrl, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+
+            const blob = response.getBlob();
+            const base64Data = Utilities.base64Encode(blob.getBytes());
 
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
-                "pdfUrl": pdfUrl
+                "pdfBase64": base64Data,
+                "fileName": "Reporte_Extintores_" + targetDateStr + ".pdf"
             })).setMimeType(ContentService.MimeType.JSON);
         }
 
@@ -226,4 +273,17 @@ function doOptions(e) {
         .setMimeType(ContentService.MimeType.JSON)
         .setHeader("Access-Control-Allow-Origin", "*")
         .setHeader("Access-Control-Allow-Methods", "POST, GET");
+}
+
+// ==========================================
+// FUNCIÓN DE CONFIGURACIÓN DE PERMISOS
+// ==========================================
+// EJECUTAR UNA SOLA VEZ DESDE EL EDITOR DE APPS SCRIPT PARA AUTORIZAR LA APP
+function setupPermisos() {
+    try {
+        UrlFetchApp.fetch("https://www.google.com");
+        DriveApp.getFiles();
+        SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e) {
+    }
 }
