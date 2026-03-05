@@ -207,26 +207,19 @@ export default function ChecklistForm() {
                     </div>
 
                     {checklistItems.map((item) => (
-                        <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                            <span style={{ fontSize: '0.875rem', flex: 1 }}>{item.label}</span>
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <div key={item.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
+                            <span style={{ fontSize: '0.875rem' }}>{item.label}</span>
+                            <div className="radio-group">
                                 {['B', 'R', 'M', 'NC'].map((val) => (
-                                    <label key={val} style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        width: '28px', height: '28px',
-                                        background: formData[item.name] === val ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                                        borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s',
-                                        fontSize: '0.75rem', fontWeight: formData[item.name] === val ? 'bold' : 'normal'
-                                    }}>
+                                    <label key={val}>
                                         <input
                                             type="radio"
                                             name={item.name}
                                             value={val}
                                             checked={formData[item.name] === val}
                                             onChange={handleChange}
-                                            style={{ display: 'none' }}
                                         />
-                                        {val}
+                                        <span>{val}</span>
                                     </label>
                                 ))}
                             </div>

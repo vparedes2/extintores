@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
 import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText, Truck } from 'lucide-react';
 import './index.css';
 
@@ -33,34 +33,29 @@ function App() {
         </Routes>
       </main>
 
-      {/* Bottom Navigation for Mobile */}
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, width: '100%',
-        background: 'rgba(15, 23, 42, 0.95)', borderTop: '1px solid var(--glass-border)',
-        display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0.5rem',
-        backdropFilter: 'blur(10px)', overflowX: 'auto', whiteSpace: 'nowrap'
-      }}>
-        <Link to="/" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <ShieldAlert size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Inicio</span>
-        </Link>
-        <Link to="/scan" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <ScanLine size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Escanear</span>
-        </Link>
-        <Link to="/alta" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <FilePlus size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Alta</span>
-        </Link>
-        <Link to="/baja" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <LogOut size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Baja</span>
-        </Link>
-        <Link to="/checklist" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <CheckSquare size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Check</span>
-        </Link>
-        <Link to="/reportes" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <FileText size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>PDF</span>
-        </Link>
-        <Link to="/panol" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0.5rem' }}>
-          <Truck size={22} /> <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>Pañol</span>
-        </Link>
+      {/* Bottom Navigation for Mobile using NavLink for active states */}
+      <nav className="mobile-nav">
+        <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <ShieldAlert size={22} /> <span>Inicio</span>
+        </NavLink>
+        <NavLink to="/scan" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <ScanLine size={22} /> <span>Escanear</span>
+        </NavLink>
+        <NavLink to="/alta" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <FilePlus size={22} /> <span>Alta</span>
+        </NavLink>
+        <NavLink to="/baja" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <LogOut size={22} /> <span>Baja</span>
+        </NavLink>
+        <NavLink to="/checklist" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <CheckSquare size={22} /> <span>Check</span>
+        </NavLink>
+        <NavLink to="/reportes" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <FileText size={22} /> <span>PDF</span>
+        </NavLink>
+        <NavLink to="/panol" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Truck size={22} /> <span>Pañol</span>
+        </NavLink>
       </nav>
     </BrowserRouter>
   );
