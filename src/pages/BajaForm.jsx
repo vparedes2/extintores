@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, Send } from 'lucide-react';
-import { sendToSheet } from '../services/api';
+import { sendToSheet, fetchExtintores } from '../services/api';
 
 export default function BajaForm() {
     const navigate = useNavigate();
@@ -28,6 +28,16 @@ export default function BajaForm() {
         e.preventDefault();
         setLoading(true);
         try {
+            const allExt = await fetchExtintores();
+            const inputId = String(formData.extintorId).toLowerCase().trim();
+            const exists = allExt.some(ext => String(ext.N_Interno).toLowerCase().trim() === inputId);
+
+            if (!exists) {
+                alert(`Error: El extintor "${formData.extintorId}" no existe en el registro. Por favor, verifica el ID o dale de Alta primero.`);
+                setLoading(false);
+                return;
+            }
+
             await sendToSheet({ action: 'baja', ...formData });
             alert('Se ha registrado el movimiento del extintor.');
             navigate('/');
