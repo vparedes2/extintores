@@ -301,16 +301,54 @@ function doPost(e) {
             const rowsToExport = clRows.filter(row => {
                 let cellVal = row[fechaIndex];
                 if (!cellVal) return false;
+
+                // Si la celda es un objeto Date nativo de Google o Javascript
                 if (cellVal instanceof Date) {
                     let cellDateStr = Utilities.formatDate(cellVal, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
                     return cellDateStr === targetDateStr;
                 }
+
                 const strVal = String(cellVal).trim();
-                return strVal === targetDateStr || strVal.includes(targetDateStr) || strVal === formattedTarget;
+
+                // Convertir cualquier formato extraño separador (/ o .) a guiones para estandarizar visualmente
+                const strNorm = strVal.replace(/[\/\.]/g, "-");
+
+                // Soporte para variaciones de YYYY-MM-DD vs DD-MM-YYYY
+                if (strNorm === targetDateStr || strNorm === formattedTarget || strNorm.includes(targetDateStr) || strNorm.includes(formattedTarget.replace(/\//g, '-'))) {
+                    return true;
+                }
+
+                // Desensamblaje profundo en caso de que Google Sheets lo haya volcado como 'D-M-YYYY'
+                // targetDateStr es YYYY-MM-DD
+                const partsTarget = targetDateStr.split('-');
+                const pT_Y = partsTarget[0];
+                const pT_M = parseInt(partsTarget[1], 10);
+                const pT_D = parseInt(partsTarget[2], 10);
+
+                if (strNorm.includes('-')) {
+                    const pS = strNorm.split('-');
+                    if (pS.length === 3) {
+                        // Si la primera parte es 4 digitos es YYYY-XX-XX
+                        let sY, sM, sD;
+                        if (pS[0].length === 4) {
+                            sY = pS[0];
+                            sM = parseInt(pS[1], 10);
+                            sD = parseInt(pS[2], 10);
+                        } else if (pS[2].length === 4) { // Si la ultima es 4 digitos es DD-MM-YYYY o MM-DD-YYYY (asumimos DD-MM usual en LATAM)
+                            sD = parseInt(pS[0], 10);
+                            sM = parseInt(pS[1], 10);
+                            sY = pS[2];
+                        }
+
+                        if (sY === pT_Y && sM === pT_M && sD === pT_D) return true;
+                    }
+                }
+
+                return false;
             });
 
             if (rowsToExport.length === 0) {
-                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay checklists para la fecha seleccionada" })).setMimeType(ContentService.MimeType.JSON);
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No se encontraron checklists guardados exactamente bajo la fecha " + formattedTarget + ". Verifica en la tabla CHECKLIST cómo quedó escrita." })).setMimeType(ContentService.MimeType.JSON);
             }
 
             // ===================================
