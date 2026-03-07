@@ -21,18 +21,23 @@ function doPost(e) {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
         // Obtenemos o creamos las pestañas necesarias
-        let sheetName = action.toUpperCase();
-        let sheet = spreadsheet.getSheetByName(sheetName);
+        let sheetName = '';
+        if (action === 'alta') sheetName = 'ALTA';
+        else if (action === 'baja') sheetName = 'BAJA';
+        else if (action === 'checklist') sheetName = 'CHECKLIST';
+        else if (action === 'mto_out' || action === 'mto_in') sheetName = 'MANTENIMIENTO';
+        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito') sheetName = null;
+        else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
-        // Lógica específica pedida por el usuario: Usar "Hoja 3" para CHECKLIST
-        // BORRADO: Ya no renombramos Hoja 3 a CHECKLIST porque el usuario la usará de plantilla PDF.
+        let sheet;
+        if (sheetName) sheet = spreadsheet.getSheetByName(sheetName);
 
-        if (!sheet) {
+        if (sheetName && !sheet) {
             sheet = spreadsheet.insertSheet(sheetName);
-            // Configurar cabeceras iniciales si la hoja es nueva
-            if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Placa_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso', 'Remito_Prov']);
-            if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Motivo', 'Proveedor', 'Remito_Salida']);
+            if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Tarjeta_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso', 'Remito_Prov']);
+            if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Observaciones', 'Proveedor', 'Remito_Sal']);
             if (action === 'checklist') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Fecha', 'Inspector', 'Placa_ID', 'Vto_PH', 'Vto_Carga', 'Capacidad_Valor', 'Agente', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso']);
+            if (action === 'mto_out' || action === 'mto_in') sheet.appendRow(['Timestamp', 'Tipo_Movimiento', 'N_Interno', 'Fecha_Movimiento', 'Proveedor', 'Motivo_Trabajo', 'Observaciones', 'Remito', 'Responsable', 'Nuevo_Vto_Carga', 'Nuevo_Vto_PH', 'Check_Visual']);
         }
 
         // Insertar los datos según la acción
@@ -80,6 +85,17 @@ function doPost(e) {
                 data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto,
                 data.soporte, data.estadoRecipiente, data.senalizacionAcceso
             ]);
+        } else if (action === 'mto_out') {
+            sheet.appendRow([
+                timestamp, 'SALIDA', data.extintorId, data.fecha, data.proveedor, data.motivo, data.observaciones, data.remito, data.responsable, "", "", ""
+            ]);
+        } else if (action === 'mto_in') {
+            const clCarga = normalizeVtoMonth(data.vtoCarga);
+            const clPH = data.vtoPH || "";
+            const chkVis = data.checkVisual ? 'SI' : 'NO';
+            sheet.appendRow([
+                timestamp, 'INGRESO', data.extintorId, data.fecha, data.proveedor, data.trabajos, data.observaciones, data.remito, data.responsable, clCarga, clPH, chkVis
+            ]);
         } else if (action === 'get_current_state') {
             const getAllDataFromSheet = (sheetObj) => {
                 if (!sheetObj) return [];
@@ -100,17 +116,15 @@ function doPost(e) {
             const dataAlta = getAllDataFromSheet(spreadsheet.getSheetByName('ALTA'));
             const dataBaja = getAllDataFromSheet(spreadsheet.getSheetByName('BAJA'));
             const dataChecklist = getAllDataFromSheet(spreadsheet.getSheetByName('CHECKLIST'));
+            const dataManto = getAllDataFromSheet(spreadsheet.getSheetByName('MANTENIMIENTO'));
 
-            // Combinar la historia para encontrar el estado real final EN EL SERVIDOR
             const equipos = new Map();
 
-            // 1. Cargar base inicial de ALTA
             dataAlta.forEach(a => {
                 const id = String(a.N_Interno).trim();
                 equipos.set(id, { ...a, Ultimo_Movimiento: new Date(a.Timestamp) });
             });
 
-            // 2. Mapear CHECKLISTS (Actualizan ubicación y estado de disponibilidad)
             dataChecklist.forEach(c => {
                 const id = String(c.N_Interno).trim();
                 const ts = new Date(c.Timestamp);
@@ -126,19 +140,35 @@ function doPost(e) {
                 }
             });
 
-            // 3. Mapear BAJAS (Sobrescriben el estado)
+            dataManto.forEach(m => {
+                const id = String(m.N_Interno).trim();
+                const ts = new Date(m.Timestamp);
+                if (equipos.has(id)) {
+                    let eq = equipos.get(id);
+                    if (ts > eq.Ultimo_Movimiento) {
+                        const tipo = String(m.Tipo_Movimiento).toUpperCase();
+                        if (tipo === 'SALIDA') {
+                            eq.Estado_Disp = 'En reparación';
+                            eq.Ubicacion = String(m.Proveedor).trim() || 'Proveedor Externo';
+                        } else if (tipo === 'INGRESO') {
+                            eq.Estado_Disp = 'Disponible en Pañol';
+                            eq.Ubicacion = 'Pañol Central';
+                            if (m.Nuevo_Vto_Carga) eq.Vto_Carga = m.Nuevo_Vto_Carga;
+                            if (m.Nuevo_Vto_PH) eq.Vto_PH = m.Nuevo_Vto_PH;
+                        }
+                        eq.Ultimo_Movimiento = ts;
+                        equipos.set(id, eq);
+                    }
+                }
+            });
+
             dataBaja.forEach(b => {
                 const id = String(b.N_Interno).trim();
                 const ts = new Date(b.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
                     if (ts >= eq.Ultimo_Movimiento) {
-                        const destinoStr = String(b.Destino).toLowerCase();
-                        if (destinoStr.includes('recarga') || destinoStr.includes('mantenimiento')) {
-                            eq.Estado_Disp = 'En reparación';
-                        } else {
-                            eq.Estado_Disp = `Baja: ${b.Destino}`;
-                        }
+                        eq.Estado_Disp = `Baja: ${b.Destino}`;
                         eq.Ultimo_Movimiento = ts;
                         equipos.set(id, eq);
                     }
