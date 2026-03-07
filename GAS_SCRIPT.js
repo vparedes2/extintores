@@ -242,10 +242,22 @@ function doPost(e) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay extintores seleccionados para el remito." })).setMimeType(ContentService.MimeType.JSON);
             }
 
-            // 1. Insertar la fecha de hoy y la cantidad
+            // 1. Insertar la fecha de hoy, cantidad, proveedor y motivo
             const hoyStr = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy");
-            sheetRemito.getRange("A4").setValue("Fecha: " + hoyStr); // Ejemplo de ubicación
-            sheetRemito.getRange("A5").setValue("Cantidad de Equipos: " + extintores.length); // Ejemplo de ubicación
+
+            let cellFecha = sheetRemito.getRange("A4");
+            let cellCantidad = sheetRemito.getRange("A5");
+            let cellProv = sheetRemito.getRange("B6");
+            let cellMotivo = sheetRemito.getRange("B7");
+
+            const curF = String(cellFecha.getValue() || "Fecha: ");
+            const curC = String(cellCantidad.getValue() || "Cantidad Total: ");
+            cellFecha.setValue((curF.includes(":") ? curF.split(":")[0] + ": " : "Fecha: ") + hoyStr);
+            cellCantidad.setValue((curC.includes(":") ? curC.split(":")[0] + ": " : "Cantidad Total: ") + extintores.length);
+
+            // Intentamos setear proveedor y motivo si los campos B6 y B7 existen visualmente para eso
+            if (data.proveedor) cellProv.setValue(data.proveedor);
+            if (data.motivo) cellMotivo.setValue(data.motivo);
 
             // 2. Limpiar filas antiguas (asumimos a partir de fila 10)
             let dataStartRow = 10;
@@ -254,18 +266,18 @@ function doPost(e) {
                 sheetRemito.getRange(dataStartRow, 1, lastRow - (dataStartRow - 1), sheetRemito.getLastColumn()).clearContent();
             }
 
-            // 3. Preparar matriz de datos: N_Interno, N_Recipiente, Ubicación, Capacidad, Agente, Vto_PH, Vto_Carga
+            // 3. Preparar matriz de datos: N_Interno, N_Recipiente, Tipo/Capacidad, Motivo, Vto_PH, Vto_Carga
             let finalOutput = [];
+            const motivoText = data.motivo || "Recarga";
             extintores.forEach((ext, idx) => {
-                let row = new Array(10).fill(""); // Ajusta según la cantidad de columnas de tu plantilla
+                let row = new Array(10).fill("");
                 row[0] = idx + 1; // Item
                 row[1] = ext.N_Interno || "";
                 row[2] = ext.N_Recipiente || "";
-                row[3] = ext.Ubicacion || "";
-                row[4] = ext.Capacidad ? ext.Capacidad + " kg" : "";
-                row[5] = ext.Agente || "";
-                row[6] = ext.Vto_PH || "";
-                row[7] = ext.Vto_Carga || "";
+                row[3] = (ext.Capacidad ? ext.Capacidad + " kg " : "") + (ext.Agente || "");
+                row[4] = motivoText; // Insertamos el motivo en cada fila
+                row[5] = ext.Vto_PH || "";
+                row[6] = ext.Vto_Carga || "";
                 finalOutput.push(row);
             });
 

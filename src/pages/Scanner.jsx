@@ -138,11 +138,26 @@ export default function Scanner() {
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Capacidad: {foundExtintor.Capacidad}kg | Vto Carga: {foundExtintor.Vto_Carga}</p>
                             </div>
 
-                            <p style={{ marginBottom: '1.5rem' }}>¿Qué acción deseas realizar con este equipo precargado?</p>
+                            <p style={{ marginBottom: '1.5rem' }}>¿Qué acción deseas realizar con este equipo?</p>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <button className="btn" onClick={() => handleAction('checklist')}>Realizar Checklist Inspección</button>
-                                <button className="btn btn-secondary" onClick={() => handleAction('baja')}>Dar de Baja / Enviar a Recarga</button>
+                                <button className="btn" onClick={() => handleAction('checklist')}>📝 Realizar Checklist Inspección</button>
+
+                                {foundExtintor.Estado_Disp && foundExtintor.Estado_Disp.toLowerCase().includes('reparaci') ? (
+                                    <button
+                                        className="btn"
+                                        style={{ background: '#3b82f6', color: 'white' }}
+                                        onClick={() => handleAction('mto-in')}
+                                    >⬇️ Recibir de Mantenimiento</button>
+                                ) : (
+                                    <button
+                                        className="btn"
+                                        style={{ background: '#f59e0b', color: 'black' }}
+                                        onClick={() => handleAction('mto-out')}
+                                    >⬆️ Enviar a Mantenimiento</button>
+                                )}
+
+                                <button className="btn btn-secondary" onClick={() => handleAction('baja')}>🗑️ Dar de Baja Definitiva</button>
                                 <button className="btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => setScanResult(null)}>Volver a buscar</button>
                             </div>
                         </>

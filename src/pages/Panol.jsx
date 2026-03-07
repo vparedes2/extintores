@@ -4,8 +4,15 @@ import { fetchExtintores, sendToSheet } from '../services/api';
 
 export default function Panol() {
     const [extintoresPañol, setExtintoresPañol] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
+
+    // Remito Form State
+    const [remitoData, setRemitoData] = useState({
+        proveedor: '',
+        motivo: 'Mantenimiento General / Recarga'
+    });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,12 +55,18 @@ export default function Panol() {
             alert("No hay extintores en la lista para generar un remito.");
             return;
         }
+        if (!remitoData.proveedor.trim()) {
+            alert('Por favor, especifica el Proveedor destino antes de generar el remito.');
+            return;
+        }
 
-        setLoading(true);
+        setDownloading(true);
         try {
             const response = await sendToSheet({
                 action: 'export_remito',
-                extintores: filteredList
+                extintores: filteredList,
+                proveedor: remitoData.proveedor,
+                motivo: remitoData.motivo
             });
 
             if (response && response.pdfBase64) {
@@ -80,7 +93,7 @@ export default function Panol() {
             console.error("Error generating remito", error);
             alert("Fallo la conexión con el servidor al generar el remito.");
         } finally {
-            setLoading(false);
+            setDownloading(false);
         }
     };
 
@@ -95,22 +108,41 @@ export default function Panol() {
                     {extintoresPañol.length} en proceso
                 </div>
             </header>
-
-            <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                    <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+            <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generar Remito de Salida a Proveedor</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <input
                         type="text"
-                        placeholder="Buscar por ID, Recipiente, Ubicación..."
-                        style={{ paddingLeft: '2.8rem', margin: 0 }}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Nombre del Proveedor (Ej. Matafuegos Sur)"
+                        value={remitoData.proveedor}
+                        onChange={(e) => setRemitoData({ ...remitoData, proveedor: e.target.value })}
+                        style={{ margin: 0 }}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Motivo General (Ej. Recarga)"
+                        value={remitoData.motivo}
+                        onChange={(e) => setRemitoData({ ...remitoData, motivo: e.target.value })}
+                        style={{ margin: 0 }}
                     />
                 </div>
-                <button className="btn" onClick={handleGenerateRemito} style={{ width: 'auto', padding: '0.8rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--danger)' }}>
-                    <Download size={20} />
-                    Remito de Salida
-                </button>
+
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                        <input
+                            type="text"
+                            placeholder="Buscar en la lista p/ filtrar remito..."
+                            style={{ paddingLeft: '2.8rem', margin: 0 }}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn" onClick={handleGenerateRemito} disabled={downloading || filteredList.length === 0} style={{ width: 'auto', padding: '0.8rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--danger)' }}>
+                        {downloading ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : <Download size={20} />}
+                        Exportar PDF
+                    </button>
+                </div>
             </div>
 
             {loading ? (

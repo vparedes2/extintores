@@ -10,6 +10,8 @@ import BajaForm from './pages/BajaForm';
 import ChecklistForm from './pages/ChecklistForm';
 import Reportes from './pages/Reportes';
 import Panol from './pages/Panol';
+import MantenimientoOut from './pages/MantenimientoOut';
+import MantenimientoIn from './pages/MantenimientoIn';
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
           <Route path="/checklist" element={<ChecklistForm />} />
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/panol" element={<Panol />} />
+          <Route path="/mto-out" element={<MantenimientoOut />} />
+          <Route path="/mto-in" element={<MantenimientoIn />} />
         </Routes>
       </main>
 
