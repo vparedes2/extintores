@@ -17,55 +17,35 @@ export default function Dashboard() {
     useEffect(() => {
         const loadDocs = async () => {
             setLoading(true);
-            const data = await fetchExtintores();
-            if (data && data.length > 0) {
-                setExtintoresReales(data);
-
-                const parseDate = (d) => new Date(d);
-                const now = new Date();
-
-                const total = data.length;
-                let operativos = 0;
-                let enRecarga = 0;
-                let vencidosOBaja = 0;
-
-                data.forEach(ext => {
-                    const dispLower = (ext.Estado_Disp || "").toLowerCase();
-                    const vtoCargaStr = ext.Vto_Carga;
-                    let isVencido = false;
-
-                    if (vtoCargaStr) {
-                        // Support MM/YYYY or YYYY-MM
-                        let month = 1, year = 2099;
-                        if (vtoCargaStr.includes('-')) {
-                            const p = vtoCargaStr.split('-');
-                            year = parseInt(p[0]); month = parseInt(p[1]);
-                        }
-                        const vtoCDate = new Date(year, month - 1, 1);
-                        if (vtoCDate < now) isVencido = true;
-                    }
-
-                    const vtoPH = ext.Vto_PH ? parseInt(ext.Vto_PH) : null;
-                    if (vtoPH && vtoPH < now.getFullYear()) isVencido = true;
-
-                    // Lógica estricta de Dashboard
-                    if (dispLower.includes('no disponible') || dispLower.includes('reparaci') || dispLower.includes('recarga')) {
-                        enRecarga++;
-                    } else if (dispLower.includes('baja') || isVencido) {
-                        vencidosOBaja++;
-                    } else if (dispLower.includes('disponible') || dispLower.includes('afectado')) {
-                        operativos++;
-                    }
+            try {
+                // Modified fetchExtintores now acts just as a getter, 
+                // but we also need the stats object. We can either parse the raw fetch here
+                // or use the proxy directly. Let's hit the proxy since we know it returns {stats, items}.
+                const API_URL = import.meta.env.VITE_API_URL || "/api/extintores";
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: 'get_current_state' }),
                 });
 
-                setStats([
-                    { label: 'Total Registrados', value: total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
-                    { label: 'Operativos O.K.', value: operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
-                    { label: 'En Reparación', value: enRecarga, icon: <Wrench size={24} />, color: '#f59e0b' },
-                    { label: 'Vencidos / Baja', value: vencidosOBaja, icon: <ShieldAlert size={24} />, color: '#ef4444' }
-                ]);
+                const json = await response.json();
+
+                if (json.status === 'success') {
+                    setExtintoresReales(json.items || []);
+                    const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0 };
+
+                    setStats([
+                        { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
+                        { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
+                        { label: 'En Reparación', value: st.reparacion, icon: <Wrench size={24} />, color: '#f59e0b' },
+                        { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
+                    ]);
+                }
+            } catch (error) {
+                console.error("Dashboard Stats Fetch Error:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         loadDocs();
     }, []);

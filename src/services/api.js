@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbxd9vSuzSI7q42oNMS-TKFJqGSisNcd3eltBAhimWUR6rMnHVNEX-aIVBZ-BgJhNol4oQ/exec";
+const API_URL = import.meta.env.VITE_API_URL || "/api/extintores";
 
 
 export const sendToSheet = async (data) => {
@@ -12,7 +12,7 @@ export const sendToSheet = async (data) => {
             method: "POST",
             // Es importante usar 'text/plain' para evitar problemas de CORS por defecto con GAS
             headers: {
-                "Content-Type": "text/plain;charset=utf-8",
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(data),
         });
@@ -26,72 +26,25 @@ export const sendToSheet = async (data) => {
 
 export const fetchExtintores = async () => {
     if (!API_URL) {
-        console.warn("API_URL no configurada. Devolviendo datos vacíos.");
+        console.warn("API URL no disponible...");
         return [];
     }
 
     try {
-        // Ejecutamos un POST especial con action='get_all' para evitar bloqueos CORS
         const response = await fetch(API_URL, {
             method: "POST",
             headers: {
-                "Content-Type": "text/plain;charset=utf-8",
+                "Content-Type": "application/json",
             },
-            body: JSON.stringify({ action: 'get_all' }),
+            body: JSON.stringify({ action: 'get_current_state' }),
         });
 
         const json = await response.json();
 
         if (json.status === 'success') {
-            const altas = json.data || [];
-            const bajas = json.dataBaja || [];
-            const checklists = json.dataChecklist || [];
-
-            // Combinar la historia para encontrar el estado real final
-            const equipos = new Map();
-
-            // 1. Cargar base inicial de ALTA
-            altas.forEach(a => {
-                equipos.set(String(a.N_Interno).trim(), { ...a, Ultimo_Movimiento: new Date(a.Timestamp) });
-            });
-
-            // 2. Mapear CHECKLISTS (Actualizan ubicación y estado de disponibilidad)
-            checklists.forEach(c => {
-                const id = String(c.N_Interno).trim();
-                const ts = new Date(c.Timestamp);
-                if (equipos.has(id)) {
-                    let eq = equipos.get(id);
-                    if (ts > eq.Ultimo_Movimiento) {
-                        eq.Estado_Disp = c.Estado_Disp;
-                        eq.Ubicacion = c.Ubicacion;
-                        eq.Vto_Carga = c.Vto_Carga;
-                        eq.Ultimo_Movimiento = ts;
-                        equipos.set(id, eq);
-                    }
-                }
-            });
-
-            // 3. Mapear BAJAS (Sobrescriben el estado a "No Disponible" o similar)
-            bajas.forEach(b => {
-                const id = String(b.N_Interno).trim();
-                const ts = new Date(b.Timestamp);
-                if (equipos.has(id)) {
-                    let eq = equipos.get(id);
-                    // Usar >= en vez de > por si se guardan muy rápido o falla el delta de milisegundos
-                    if (ts >= eq.Ultimo_Movimiento) {
-                        const destinoStr = String(b.Destino).toLowerCase();
-                        if (destinoStr.includes('recarga') || destinoStr.includes('mantenimiento')) {
-                            eq.Estado_Disp = 'En reparación';
-                        } else {
-                            eq.Estado_Disp = `Baja: ${b.Destino}`;
-                        }
-                        eq.Ultimo_Movimiento = ts;
-                        equipos.set(id, eq);
-                    }
-                }
-            });
-
-            return Array.from(equipos.values());
+            // V2: El servidor de Google Apps Script ya calcula y consolida todos los estados
+            // Solo devolvemos la lista limpia que la API proxy nos cachea
+            return json.items || [];
 
         } else {
             console.error("Error desde el Sheet:", json.message);

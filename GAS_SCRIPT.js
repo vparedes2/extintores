@@ -38,25 +38,49 @@ function doPost(e) {
         // Insertar los datos según la acción
         const timestamp = new Date();
 
+        // 4. Normalización estricta de Fechas de Vencimiento de Carga (YYYY-MM)
+        const normalizeVtoMonth = (vtoStr) => {
+            if (!vtoStr) return "";
+            const str = String(vtoStr).trim();
+            // Case 1: Already YYYY-MM
+            if (/^\d{4}-\d{2}$/.test(str)) return str;
+            // Case 2: Full ISO Date or YYYY-MM-DD
+            if (str.includes('-') && str.length >= 10) {
+                const parts = str.split('-');
+                return `${parts[0]}-${parts[1]}`;
+            }
+            // Case 3: MM/YYYY or similar
+            const match = str.match(/(20\d{2})/);
+            if (match) {
+                const year = match[0];
+                const monthMatch = str.replace(year, "").match(/(\d{1,2})/);
+                if (monthMatch) {
+                    return `${year}-${String(monthMatch[0]).padStart(2, '0')}`;
+                }
+                return `${year}-01`; // Fallback to january if only year
+            }
+            return str;
+        };
+
         if (action === 'alta') {
             const locFinal = data.ubicacionSelect + " " + data.ubicacionManual;
+            const cleanVtoCarga = normalizeVtoMonth(data.vtoCarga);
             sheet.appendRow([
-                timestamp, data.nInterno, data.nRecipiente, locFinal.trim(), data.estadoDisponibilidad, data.vtoPH, data.vtoCarga, data.capacidad, data.agente,
+                timestamp, data.nInterno, data.nRecipiente, locFinal.trim(), data.estadoDisponibilidad, data.vtoPH, cleanVtoCarga, data.capacidad, data.agente,
                 data.tarjetaIdentificacion, data.manometro, data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto, data.soporte, data.estadoRecipiente, data.senalizacionAcceso, data.remitoProveedor
             ]);
         } else if (action === 'baja') {
             sheet.appendRow([timestamp, data.extintorId, data.destino, data.observaciones, data.proveedor, data.remitoSalida]);
         } else if (action === 'checklist') {
+            const cleanVtoCarga = normalizeVtoMonth(data.vtoCarga);
             sheet.appendRow([
                 timestamp, data.extintorId, data.nRecipiente, data.ubicacion, data.estadoDisponibilidad, data.fecha, data.inspecciono,
-                data.tarjetaIdentificacion, data.vencimientoPH, data.vtoCarga,
+                data.tarjetaIdentificacion, data.vencimientoPH, cleanVtoCarga,
                 data.capacidad, data.agenteExtintor, data.manometro,
                 data.manijaPalanca, data.mangueraBoquilla, data.seguroPrecinto,
                 data.soporte, data.estadoRecipiente, data.senalizacionAcceso
             ]);
-        } else if (action === 'get_all') {
-            // Manejar solicitud especial de lectura para sortear el bloqueo CORS de GET
-
+        } else if (action === 'get_current_state') {
             const getAllDataFromSheet = (sheetObj) => {
                 if (!sheetObj) return [];
                 const dataRange = sheetObj.getDataRange();
@@ -77,11 +101,103 @@ function doPost(e) {
             const dataBaja = getAllDataFromSheet(spreadsheet.getSheetByName('BAJA'));
             const dataChecklist = getAllDataFromSheet(spreadsheet.getSheetByName('CHECKLIST'));
 
+            // Combinar la historia para encontrar el estado real final EN EL SERVIDOR
+            const equipos = new Map();
+
+            // 1. Cargar base inicial de ALTA
+            dataAlta.forEach(a => {
+                const id = String(a.N_Interno).trim();
+                equipos.set(id, { ...a, Ultimo_Movimiento: new Date(a.Timestamp) });
+            });
+
+            // 2. Mapear CHECKLISTS (Actualizan ubicación y estado de disponibilidad)
+            dataChecklist.forEach(c => {
+                const id = String(c.N_Interno).trim();
+                const ts = new Date(c.Timestamp);
+                if (equipos.has(id)) {
+                    let eq = equipos.get(id);
+                    if (ts > eq.Ultimo_Movimiento) {
+                        eq.Estado_Disp = c.Estado_Disp;
+                        eq.Ubicacion = c.Ubicacion;
+                        eq.Vto_Carga = c.Vto_Carga;
+                        eq.Ultimo_Movimiento = ts;
+                        equipos.set(id, eq);
+                    }
+                }
+            });
+
+            // 3. Mapear BAJAS (Sobrescriben el estado)
+            dataBaja.forEach(b => {
+                const id = String(b.N_Interno).trim();
+                const ts = new Date(b.Timestamp);
+                if (equipos.has(id)) {
+                    let eq = equipos.get(id);
+                    if (ts >= eq.Ultimo_Movimiento) {
+                        const destinoStr = String(b.Destino).toLowerCase();
+                        if (destinoStr.includes('recarga') || destinoStr.includes('mantenimiento')) {
+                            eq.Estado_Disp = 'En reparación';
+                        } else {
+                            eq.Estado_Disp = `Baja: ${b.Destino}`;
+                        }
+                        eq.Ultimo_Movimiento = ts;
+                        equipos.set(id, eq);
+                    }
+                }
+            });
+
+            const finalItems = Array.from(equipos.values());
+
+            // 4. Calcular Estadísticas Básicas en el Servidor
+            let operativos = 0;
+            let reparacion = 0;
+            let vencidos = 0;
+            let vigentes = 0;
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1; // 1-12
+
+            finalItems.forEach(eq => {
+                const estado = (eq.Estado_Disp || "").toLowerCase();
+                if (estado.includes('baja')) return; // ignora bajas totales
+
+                if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) {
+                    reparacion++;
+                } else if (estado.includes('disponible') || estado.includes('afectado')) {
+                    operativos++;
+
+                    // Calculo simple de vencimiento para la data
+                    let isVencido = false;
+                    if (eq.Vto_Carga) {
+                        try {
+                            const [yearStr, monthStr] = String(eq.Vto_Carga).split('-');
+                            if (yearStr && monthStr) {
+                                const vYear = parseInt(yearStr, 10);
+                                const vMonth = parseInt(monthStr, 10);
+                                if (vYear < currentYear || (vYear === currentYear && vMonth < currentMonth)) {
+                                    isVencido = true;
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                    if (isVencido) {
+                        vencidos++;
+                    } else {
+                        vigentes++;
+                    }
+                }
+            });
+
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
-                "data": dataAlta,
-                "dataBaja": dataBaja,
-                "dataChecklist": dataChecklist
+                "stats": {
+                    "total": finalItems.length,
+                    "operativos": operativos,
+                    "reparacion": reparacion,
+                    "vencidos": vencidos,
+                    "vigentes": vigentes
+                },
+                "items": finalItems
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO ==
