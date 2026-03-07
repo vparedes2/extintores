@@ -17,8 +17,7 @@ export default async function handler(req, res) {
     }
 
     // 2. We use ENV variable or fallback to the known script for now.
-    // In Vercel, you should add `GAS_URL` in your project settings.
-    const SCRIPT_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbxd9vSuzSI7q42oNMS-TKFJqGSisNcd3eltBAhimWUR6rMnHVNEX-aIVBZ-BgJhNol4oQ/exec';
+    const SCRIPT_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbz6jZmQSGbWOr8KQWDppuLYalV4Uf-Ab7rP8_kkH7wmpqAjWWNR4zZM_ApZ_8tV8E_ILg/exec';
 
     try {
         // Enforce POST
