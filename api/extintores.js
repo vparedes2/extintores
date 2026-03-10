@@ -1,6 +1,8 @@
 // Vercel Serverless Function Proxy for Extintores App
 // This runs on Vercel's backend, hiding the true Google Form/Script URL.
 
+export const maxDuration = 60; // Allows up to 60s of execution on Vercel Hobby
+
 export default async function handler(req, res) {
     // 1. Enable CORS for local development / your specific domain
     res.setHeader('Access-Control-Allow-Credentials', true)
