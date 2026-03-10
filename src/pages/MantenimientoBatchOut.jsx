@@ -198,6 +198,8 @@ export default function MantenimientoBatchOut() {
                 const finalBlobUrl = URL.createObjectURL(blob);
                 setPdfUrl(finalBlobUrl);
                 setPdfName(resRemito.fileName || 'Remito_Salida_Lote.pdf');
+            } else {
+                alert("Extintores despachados, pero hubo un error generando el PDF. Puedes intentar en la vista Pañol.");
             }
 
             setScannedItems([]);
