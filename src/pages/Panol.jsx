@@ -130,7 +130,7 @@ export default function Panol() {
                         <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         <input
                             type="text"
-                            placeholder="Buscar en la lista p/ filtrar remito..."
+                            placeholder="Buscar por Nº Interno (ej. 34) p/ filtrar el remito..."
                             style={{ paddingLeft: '2.8rem', margin: 0 }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
