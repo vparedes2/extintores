@@ -14,8 +14,34 @@ export default function MantenimientoBatchOut() {
         remito: ''
     });
     const [manualId, setManualId] = useState('');
+    const [extintoresDb, setExtintoresDb] = useState({});
 
     const qrRef = useRef(null);
+
+    // Cargar base de datos al iniciar para cruzar datos en el PDF
+    useEffect(() => {
+        const loadDocs = async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || "/api/extintores";
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: 'get_current_state' }),
+                });
+                const json = await response.json();
+                if (json.status === 'success' && json.items) {
+                    const dbMap = {};
+                    json.items.forEach(eq => {
+                        dbMap[String(eq.N_Interno).toUpperCase()] = eq;
+                    });
+                    setExtintoresDb(dbMap);
+                }
+            } catch (error) {
+                console.error("Error cargando BD para el Remito:", error);
+            }
+        };
+        loadDocs();
+    }, []);
 
     // Reproducir sonido al escanear
     const playScanSound = () => {
@@ -131,16 +157,20 @@ export default function MantenimientoBatchOut() {
             await Promise.all(pmises);
 
             // 2. Generar el Remito Consolidado
-            // El backend export_remito espera "extintores" como array de objetos con info.
-            // Puesto que en el lote capaz no tengamos la información completa (Capacidad, Agente), pasamos el N_Interno al menos.
-            const extintoresParaRemito = scannedItems.map(item => ({
-                N_Interno: item.id,
-                N_Recipiente: '-',
-                Capacidad: '',
-                Agente: 'S/D',
-                Vto_PH: '',
-                Vto_Carga: ''
-            }));
+            // Cruzamos el ID escaneado con la base de datos descargada para inyectar Capacidad y Agente reales.
+            const extintoresParaRemito = scannedItems.map(item => {
+                const idUppercase = String(item.id).toUpperCase();
+                const dbInfo = extintoresDb[idUppercase] || {};
+
+                return {
+                    N_Interno: item.id,
+                    N_Recipiente: dbInfo.N_Recipiente || '-',
+                    Capacidad: dbInfo.Capacidad || '',
+                    Agente: dbInfo.Agente || 'S/D',
+                    Vto_PH: dbInfo.Vto_PH || '',
+                    Vto_Carga: dbInfo.Vto_Carga || ''
+                };
+            });
 
             const resRemito = await sendToSheet({
                 action: 'export_remito',
