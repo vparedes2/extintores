@@ -118,16 +118,22 @@ function doPost(e) {
             const dataChecklist = getAllDataFromSheet(spreadsheet.getSheetByName('CHECKLIST'));
             const dataManto = getAllDataFromSheet(spreadsheet.getSheetByName('MANTENIMIENTO'));
 
+            const safeParseDate = (dateVal) => {
+                if (!dateVal) return new Date(0);
+                const d = new Date(dateVal);
+                return isNaN(d.getTime()) ? new Date(0) : d;
+            };
+
             const equipos = new Map();
 
             dataAlta.forEach(a => {
                 const id = String(a.N_Interno).trim();
-                equipos.set(id, { ...a, Ultimo_Movimiento: new Date(a.Timestamp) });
+                equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
             });
 
             dataChecklist.forEach(c => {
                 const id = String(c.N_Interno).trim();
-                const ts = new Date(c.Timestamp);
+                const ts = safeParseDate(c.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
                     if (ts > eq.Ultimo_Movimiento) {
@@ -142,10 +148,11 @@ function doPost(e) {
 
             dataManto.forEach(m => {
                 const id = String(m.N_Interno).trim();
-                const ts = new Date(m.Timestamp);
+                // En mantenimiento usamos Timestamp para desempate si la tabla se carga rapido
+                const ts = safeParseDate(m.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
-                    if (ts > eq.Ultimo_Movimiento) {
+                    if (ts >= eq.Ultimo_Movimiento) {
                         const tipo = String(m.Tipo_Movimiento).toUpperCase();
                         if (tipo === 'SALIDA') {
                             eq.Estado_Disp = 'En reparación';
@@ -164,7 +171,7 @@ function doPost(e) {
 
             dataBaja.forEach(b => {
                 const id = String(b.N_Interno).trim();
-                const ts = new Date(b.Timestamp);
+                const ts = safeParseDate(b.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
                     if (ts >= eq.Ultimo_Movimiento) {
