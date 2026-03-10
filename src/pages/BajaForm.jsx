@@ -15,9 +15,9 @@ export default function BajaForm() {
         extintorId: initialExtintorId,
         motivo: '',
         observaciones: '',
-        destino: 'Recarga',
-        proveedor: '',
-        remitoSalida: ''
+        destino: 'Baja Definitiva (Rotura/Descarte)',
+        proveedor: 'N/A', // Legacy field no longer used visually
+        remitoSalida: 'N/A' // Legacy field no longer used visually
     });
 
     const handleChange = (e) => {
@@ -51,8 +51,8 @@ export default function BajaForm() {
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <header style={{ marginBottom: '2rem' }}>
-                <h2>Baja o Recarga</h2>
-                <p>Registra cuando un extintor se vacía, vence, o se retira de servicio.</p>
+                <h2>Descarte o Extravío (Baja)</h2>
+                <p>Registra cuando un extintor se retira definitivamente del sistema (robo, descarte, rotura total).</p>
             </header>
 
             <form onSubmit={handleSubmit} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -70,23 +70,12 @@ export default function BajaForm() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Tipo de Movimiento</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Tipo de Baja</label>
                     <select required name="destino" value={formData.destino} onChange={handleChange}>
-                        <option value="Recarga">Envío a Recarga Anual</option>
-                        <option value="Uso">Vaciado por uso (Incendio/Simulacro)</option>
-                        <option value="Mantenimiento">Mantenimiento Correctivo / Prueba Hidráulica</option>
-                        <option value="Baja Definitiva">Baja Definitiva (Rotura/Descarte)</option>
+                        <option value="Baja Definitiva (Rotura/Descarte)">Baja Definitiva (Rotura / Vida útil vencida)</option>
+                        <option value="Robo / Extravío">Robo / Extravío</option>
+                        <option value="Vaciado (Uso en Incendio/Simulacro)">Vaciado (Uso en Incendio/Simulacro)</option>
                     </select>
-                </div>
-
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Proveedor / Destinatario (Opcional)</label>
-                    <input name="proveedor" value={formData.proveedor} onChange={handleChange} placeholder="Ej: Matafuegos SA" />
-                </div>
-
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Remito de Salida (Opcional)</label>
-                    <input name="remitoSalida" value={formData.remitoSalida} onChange={handleChange} placeholder="Ej: R-0002-1234" />
                 </div>
 
                 <div>

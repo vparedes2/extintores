@@ -7,6 +7,7 @@ export default function MantenimientoBatchOut() {
     const [scannedItems, setScannedItems] = useState([]);
     const [isScanning, setIsScanning] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null);
     const [formData, setFormData] = useState({
         proveedor: '',
         motivo: 'Mantenimiento General / Recarga',
@@ -74,10 +75,15 @@ export default function MantenimientoBatchOut() {
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                    const id = decodedText.trim();
+                    const id = decodedText.trim().toUpperCase();
+                    // Validate against DB if loaded
+                    if (Object.keys(extintoresDb).length > 0 && !extintoresDb[id]) {
+                        return; // Ignore silently in continuous mode
+                    }
+
                     setScannedItems(prev => {
                         // Evitar duplicados
-                        if (prev.some(item => item.id === id)) return prev;
+                        if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
                         playScanSound();
                         return [...prev, { id, timestamp: new Date() }];
                     });
@@ -135,6 +141,7 @@ export default function MantenimientoBatchOut() {
         if (!confirmacion) return;
 
         setLoading(true);
+        setPdfUrl(null);
         try {
             // Detenemos cámara si estaba activa
             await stopScanner();
@@ -188,6 +195,7 @@ export default function MantenimientoBatchOut() {
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 const finalBlobUrl = URL.createObjectURL(blob);
+                setPdfUrl(finalBlobUrl);
 
                 const link = document.createElement('a');
                 link.href = finalBlobUrl;
@@ -197,7 +205,6 @@ export default function MantenimientoBatchOut() {
                 document.body.removeChild(link);
             }
 
-            alert("✅ Lote despachado correctamente y remito generado.");
             setScannedItems([]);
             setFormData({ ...formData, remito: '' }); // resetear remito opcional
 
@@ -244,12 +251,19 @@ export default function MantenimientoBatchOut() {
             {/* INGRESO MANUAL */}
             <form onSubmit={(e) => {
                 e.preventDefault();
-                const id = manualId.trim();
+                const id = manualId.trim().toUpperCase();
                 if (!id) return;
+
+                // Validate
+                if (Object.keys(extintoresDb).length > 0 && !extintoresDb[id]) {
+                    alert(`El extintor Nº ${id} no está en el sistema. Asegúrate de darlo de alta primero.`);
+                    return;
+                }
+
                 setScannedItems(prev => {
-                    if (prev.some(item => String(item.id).toUpperCase() === id.toUpperCase())) return prev;
+                    if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
                     if (isScanning) playScanSound();
-                    return [...prev, { id: id.toUpperCase(), timestamp: new Date() }];
+                    return [...prev, { id: id, timestamp: new Date() }];
                 });
                 setManualId('');
             }} className="glass-card" style={{ marginBottom: '1.5rem' }}>
@@ -345,6 +359,15 @@ export default function MantenimientoBatchOut() {
                     {loading ? <div className="spinner"></div> : <Send size={20} />}
                     {loading ? 'Procesando Lote y Generando PDF...' : `Confirmar y Despachar ${scannedItems.length} equipos`}
                 </button>
+
+                {pdfUrl && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid var(--success)', textAlign: 'center' }}>
+                        <p style={{ color: 'var(--success)', marginBottom: '0.5rem', fontWeight: 'bold' }}>✅ ¡Lote Procesado Exitosamente!</p>
+                        <a href={pdfUrl} download="Remito_Salida_Lote.pdf" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>
+                            Clic aquí para descargar el Remito PDF
+                        </a>
+                    </div>
+                )}
             </form>
         </div>
     );
