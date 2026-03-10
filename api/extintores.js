@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     }
 
     // 2. We use ENV variable or fallback to the known script for now.
-    const SCRIPT_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbz1DlkE0H-4wdXc-Mh_d90afNfOWO6O7bcsEQ_XcJUep71H6qL5lEoGLi08q-VvqzstuQ/exec';
+    const SCRIPT_URL = process.env.GAS_URL || 'https://script.google.com/macros/s/AKfycbxumYfmYL92yz4KA-bSM8bVssY5Ezuf5-LnZpzQjpCSktWX19fH7p0r7RS5s8AnGzWkHA/exec';
 
     try {
         // Enforce POST
