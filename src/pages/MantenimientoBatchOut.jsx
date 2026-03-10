@@ -13,6 +13,7 @@ export default function MantenimientoBatchOut() {
         responsable: '',
         remito: ''
     });
+    const [manualId, setManualId] = useState('');
 
     const qrRef = useRef(null);
 
@@ -209,6 +210,30 @@ export default function MantenimientoBatchOut() {
                     </button>
                 )}
             </div>
+
+            {/* INGRESO MANUAL */}
+            <form onSubmit={(e) => {
+                e.preventDefault();
+                const id = manualId.trim();
+                if (!id) return;
+                setScannedItems(prev => {
+                    if (prev.some(item => String(item.id).toUpperCase() === id.toUpperCase())) return prev;
+                    if (isScanning) playScanSound();
+                    return [...prev, { id: id.toUpperCase(), timestamp: new Date() }];
+                });
+                setManualId('');
+            }} className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                <input
+                    type="text"
+                    placeholder="Escriba el Nº del extintor..."
+                    value={manualId}
+                    onChange={(e) => setManualId(e.target.value)}
+                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}
+                />
+                <button type="submit" className="btn btn-secondary" style={{ padding: '0.75rem 1.5rem' }}>
+                    Añadir al Lote
+                </button>
+            </form>
 
             {/* LISTA ADQUIRIDA */}
             <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
