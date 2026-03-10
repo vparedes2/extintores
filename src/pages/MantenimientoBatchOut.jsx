@@ -252,17 +252,20 @@ export default function MantenimientoBatchOut() {
                     return [...prev, { id: id.toUpperCase(), timestamp: new Date() }];
                 });
                 setManualId('');
-            }} className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-                <input
-                    type="text"
-                    placeholder="Escriba el Nº del extintor..."
-                    value={manualId}
-                    onChange={(e) => setManualId(e.target.value)}
-                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}
-                />
-                <button type="submit" className="btn btn-secondary" style={{ padding: '0.75rem 1.5rem' }}>
-                    Añadir al Lote
-                </button>
+            }} className="glass-card" style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>O añadir manualmente:</h3>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <input
+                        type="text"
+                        placeholder="Ej: 004..."
+                        value={manualId}
+                        onChange={(e) => setManualId(e.target.value)}
+                        style={{ margin: 0, flex: 1 }}
+                    />
+                    <button type="submit" className="btn btn-secondary" style={{ width: 'auto', margin: 0, padding: '0.875rem 1.5rem' }}>
+                        Añadir
+                    </button>
+                </div>
             </form>
 
             {/* LISTA ADQUIRIDA */}
