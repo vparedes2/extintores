@@ -13,27 +13,9 @@ export default function AltaForm() {
     const [formData, setFormData] = useState({
         nInterno: initialExtintorId, nRecipiente: '', ubicacionSelect: '', ubicacionManual: '', estadoDisponibilidad: '',
         vtoPH: '', vtoCarga: '', capacidad: '', agente: '',
-        tarjetaIdentificacion: 'B',
-        manometro: 'B',
-        manijaPalanca: 'B',
-        mangueraBoquilla: 'B',
-        seguroPrecinto: 'B',
-        soporte: 'B',
-        estadoRecipiente: 'B',
-        senalizacionAcceso: 'B',
         remitoProveedor: ''
     });
 
-    const checklistItems = [
-        { name: 'tarjetaIdentificacion', label: 'Placa de identificación' },
-        { name: 'manometro', label: 'Manómetro' },
-        { name: 'manijaPalanca', label: 'Manija y palanca' },
-        { name: 'mangueraBoquilla', label: 'Manguera/boquilla' },
-        { name: 'seguroPrecinto', label: 'Seguro/precinto' },
-        { name: 'soporte', label: 'Soporte' },
-        { name: 'estadoRecipiente', label: 'Estado del recipiente' },
-        { name: 'senalizacionAcceso', label: 'Señalización y acceso' }
-    ];
 
     const detectStatus = (ubicacion) => {
         const lower = ubicacion.toLowerCase();
@@ -178,43 +160,6 @@ export default function AltaForm() {
                     </select>
                 </div>
 
-                {/* Lista de chequeo visual B/M/R/NC */}
-                <section style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Estado Físico al Ingreso</h3>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        <span title="Bueno">B</span>
-                        <span title="Regular">R</span>
-                        <span title="Malo">M</span>
-                        <span title="No Corresponde">NC</span>
-                    </div>
-
-                    {checklistItems.map((item) => (
-                        <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                            <span style={{ fontSize: '0.875rem', flex: 1 }}>{item.label}</span>
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                {['B', 'R', 'M', 'NC'].map((val) => (
-                                    <label key={val} style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        width: '28px', height: '28px',
-                                        background: formData[item.name] === val ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-                                        borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s',
-                                        fontSize: '0.75rem', fontWeight: formData[item.name] === val ? 'bold' : 'normal'
-                                    }}>
-                                        <input
-                                            type="radio"
-                                            name={item.name}
-                                            value={val}
-                                            checked={formData[item.name] === val}
-                                            onChange={handleChange}
-                                            style={{ display: 'none' }}
-                                        />
-                                        {val}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </section>
 
                 <button type="submit" className="btn" style={{ marginTop: '1rem' }} disabled={loading}>
                     {loading ? 'Guardando...' : <><Save size={20} /> Registrar Ingreso</>}
