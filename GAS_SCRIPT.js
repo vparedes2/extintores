@@ -189,7 +189,16 @@ function doPost(e) {
 
             finalItems.forEach(eq => {
                 const estado = (eq.Estado_Disp || "").toLowerCase();
-                if (estado.includes('baja')) return; // ignora bajas totales
+
+                if (estado.includes('baja') && (estado.includes('recarga') || estado.includes('reparaci') || estado.includes('ph'))) {
+                    reparacion++;
+                    return;
+                }
+
+                if (estado.includes('baja')) {
+                    vencidos++;
+                    return;
+                }
 
                 if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) {
                     reparacion++;
@@ -230,11 +239,12 @@ function doPost(e) {
                 "items": finalItems
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
-            // == LOGICA DE GENERACION DE REMITO ==
+            // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
             let sheetRemito = spreadsheet.getSheetByName('REMITO_TEMPLATE');
 
             if (!sheetRemito) {
-                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Falta pestaña REMITO_TEMPLATE. Por favor créala en el Google Sheet." })).setMimeType(ContentService.MimeType.JSON);
+                // Auto-create template sheet if it's missing
+                sheetRemito = spreadsheet.insertSheet('REMITO_TEMPLATE');
             }
 
             const extintores = data.extintores || [];
@@ -242,50 +252,104 @@ function doPost(e) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay extintores seleccionados para el remito." })).setMimeType(ContentService.MimeType.JSON);
             }
 
-            // 1. Insertar la fecha de hoy, cantidad, proveedor y motivo
-            const hoyStr = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+            // 1. Limpiar hoja para asegurar dibujo nuevo
+            sheetRemito.clear();
 
-            let cellFecha = sheetRemito.getRange("A4");
-            let cellCantidad = sheetRemito.getRange("A5");
-            let cellProv = sheetRemito.getRange("B6");
-            let cellMotivo = sheetRemito.getRange("B7");
-
-            const curF = String(cellFecha.getValue() || "Fecha: ");
-            const curC = String(cellCantidad.getValue() || "Cantidad Total: ");
-            cellFecha.setValue((curF.includes(":") ? curF.split(":")[0] + ": " : "Fecha: ") + hoyStr);
-            cellCantidad.setValue((curC.includes(":") ? curC.split(":")[0] + ": " : "Cantidad Total: ") + extintores.length);
-
-            // Intentamos setear proveedor y motivo si los campos B6 y B7 existen visualmente para eso
-            if (data.proveedor) cellProv.setValue(data.proveedor);
-            if (data.motivo) cellMotivo.setValue(data.motivo);
-
-            // 2. Limpiar filas antiguas (asumimos a partir de fila 10)
-            let dataStartRow = 10;
-            let lastRow = sheetRemito.getLastRow();
-            if (lastRow >= dataStartRow) {
-                sheetRemito.getRange(dataStartRow, 1, lastRow - (dataStartRow - 1), sheetRemito.getLastColumn()).clearContent();
+            // Borramos todas las imagenes existentes en la hoja (Logos anteriores)
+            const images = sheetRemito.getImages();
+            for (let i = 0; i < images.length; i++) {
+                images[i].remove();
             }
 
-            // 3. Preparar matriz de datos: N_Interno, N_Recipiente, Tipo/Capacidad, Motivo, Vto_PH, Vto_Carga
-            let finalOutput = [];
-            const motivoText = data.motivo || "Recarga";
-            extintores.forEach((ext, idx) => {
-                let row = new Array(10).fill("");
-                row[0] = idx + 1; // Item
-                row[1] = ext.N_Interno || "";
-                row[2] = ext.N_Recipiente || "";
-                row[3] = (ext.Capacidad ? ext.Capacidad + " kg " : "") + (ext.Agente || "");
-                row[4] = motivoText; // Insertamos el motivo en cada fila
-                row[5] = ext.Vto_PH || "";
-                row[6] = ext.Vto_Carga || "";
-                finalOutput.push(row);
-            });
+            // General styling
+            sheetRemito.getRange("A:G").setFontFamily("Arial").setVerticalAlignment("middle");
 
-            //Pegar datos
-            sheetRemito.getRange(dataStartRow, 1, finalOutput.length, 10).setValues(finalOutput);
-            SpreadsheetApp.flush();
+            // URL del Logo de Rio Limay
+            const logoUrl = "https://raw.githubusercontent.com/vparedes2/extintores/main/public/logo192.png";
 
-            // Exportar a PDF (base64)
+            // Función auxiliar para dibujar un bloque de Remito (1=Original, 2=Copia)
+            const drawRemitoBlock = (startRow, typeLabel) => {
+                // Insertar Logo (Abarca A:B aprox)
+                try {
+                    const blob = UrlFetchApp.fetch(logoUrl).getBlob();
+                    sheetRemito.insertImage(blob, 1, startRow, 5, 5);
+                } catch (e) {
+                    sheetRemito.getRange(`A${startRow}`).setValue("RIO LIMAY S.A.").setFontWeight("bold");
+                }
+
+                // Título y Tipo
+                sheetRemito.getRange(`C${startRow}:G${startRow + 1}`).merge().setValue(`REMITO DE SALIDA\n${typeLabel}`)
+                    .setHorizontalAlignment("center").setVerticalAlignment("middle").setFontSize(14).setFontWeight("bold").setBackground("#f3f4f6");
+
+                const hoyStr = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy");
+                sheetRemito.getRange(`A${startRow + 3}`).setValue(`Fecha: ${hoyStr}`).setFontWeight("bold");
+                sheetRemito.getRange(`A${startRow + 4}`).setValue(`Cantidad Total: ${extintores.length}`).setFontWeight("bold");
+
+                sheetRemito.getRange(`B${startRow + 5}`).setValue(`Proveedor: ${data.proveedor || ''}`).setFontWeight("bold");
+                sheetRemito.getRange(`B${startRow + 6}`).setValue(`Motivo: ${data.motivo || ''}`).setFontWeight("bold");
+
+                // Cabeceras de Tabla
+                const headers = [["Item", "Nº Interno", "Nº Recipiente", "Tipo / Capacidad", "Motivo", "Vto PH", "Vto Carga"]];
+                const headerRow = startRow + 8;
+                sheetRemito.getRange(`A${headerRow}:G${headerRow}`).setValues(headers)
+                    .setFontWeight("bold").setBackground("#d9d9d9").setHorizontalAlignment("center");
+
+                // Preparar matriz de datos
+                let finalOutput = [];
+                const motivoText = data.motivo || "Mto. General / Recarga";
+                extintores.forEach((ext, idx) => {
+                    let row = new Array(7).fill("");
+                    row[0] = idx + 1; // Item
+                    row[1] = ext.N_Interno || "";
+                    row[2] = ext.N_Recipiente || "";
+
+                    let capStr = ext.Capacidad ? String(ext.Capacidad).trim() : "";
+                    if (capStr && !capStr.toLowerCase().includes("kg") && !capStr.toLowerCase().includes("lt")) {
+                        capStr += " kg";
+                    }
+                    row[3] = (capStr ? capStr + " " : "") + (ext.Agente ? String(ext.Agente).trim() : "");
+                    row[4] = motivoText;
+                    row[5] = ext.Vto_PH ? Utilities.formatDate(new Date(ext.Vto_PH), spreadsheet.getSpreadsheetTimeZone(), "MM/yyyy") : "";
+                    row[6] = ext.Vto_Carga ? Utilities.formatDate(new Date(ext.Vto_Carga), spreadsheet.getSpreadsheetTimeZone(), "MM/yyyy") : "";
+                    finalOutput.push(row);
+                });
+
+                // Insertar Datos
+                const dataRowStart = headerRow + 1;
+                sheetRemito.getRange(dataRowStart, 1, finalOutput.length, 7).setValues(finalOutput)
+                    .setHorizontalAlignment("center").setFontSize(9);
+
+                // Dibujar bordes a la tabla
+                sheetRemito.getRange(`A${headerRow}:G${dataRowStart + finalOutput.length - 1}`).setBorder(true, true, true, true, true, true);
+
+                // Bloque de Firmas (3 filas debajo del final de la tabla)
+                const sigRow = dataRowStart + finalOutput.length + 3;
+                sheetRemito.getRange(`B${sigRow}`).setValue("______________________________\nFirma Entrega (Rio Limay)").setHorizontalAlignment("center").setFontWeight("bold");
+                sheetRemito.getRange(`F${sigRow}`).setValue("______________________________\nFirma Recepción (Proveedor)").setHorizontalAlignment("center").setFontWeight("bold");
+
+                return sigRow + 3; // Devolver la siguiente fila disponible para el bloque Copia (con un margen de 3 filas extra)
+            };
+
+            // 2. Dibujar bloque ORIGINAL
+            const nextStartRow = drawRemitoBlock(1, "ORIGINAL");
+
+            // 3. Línea de corte (Tijera)
+            sheetRemito.getRange(`A${nextStartRow}:G${nextStartRow}`).merge().setValue("-------------------------------------------------- CORTE --------------------------------------------------")
+                .setHorizontalAlignment("center").setVerticalAlignment("middle").setFontColor("#9ca3af");
+
+            // 4. Dibujar bloque COPIA
+            drawRemitoBlock(nextStartRow + 2, "COPIA");
+
+            // 5. Configurar anchos de columna fijos para que cuadre en A4 vertical
+            sheetRemito.setColumnWidth(1, 40);
+            sheetRemito.setColumnWidth(2, 90);
+            sheetRemito.setColumnWidth(3, 110);
+            sheetRemito.setColumnWidth(4, 150);
+            sheetRemito.setColumnWidth(5, 140);
+            sheetRemito.setColumnWidth(6, 80);
+            sheetRemito.setColumnWidth(7, 80);
+
+            SpreadsheetApp.flush();            // Exportar a PDF (base64)
             const url = spreadsheet.getUrl().replace(/\/edit.*$/, '');
             const sheetId = sheetRemito.getSheetId();
             // exportFormat=pdf (portrait)
@@ -299,10 +363,11 @@ function doPost(e) {
             const blob = response.getBlob();
             const base64Data = Utilities.base64Encode(blob.getBytes());
 
+            const hoyStrForFile = Utilities.formatDate(new Date(), spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
                 "pdfBase64": base64Data,
-                "fileName": "Remito_Salida_" + hoyStr.replace(/\//g, "-") + ".pdf"
+                "fileName": "Remito_Salida_" + hoyStrForFile + ".pdf"
             })).setMimeType(ContentService.MimeType.JSON);
 
         } else if (action === 'export_pdf') {
