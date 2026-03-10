@@ -78,8 +78,16 @@ export default function MantenimientoBatchOut() {
                 (decodedText) => {
                     const id = decodedText.trim().toUpperCase();
                     // Validate against DB if loaded
-                    if (Object.keys(extintoresDb).length > 0 && !extintoresDb[id]) {
-                        return; // Ignore silently in continuous mode
+                    if (Object.keys(extintoresDb).length > 0) {
+                        const eq = extintoresDb[id];
+                        if (!eq) return; // Ignore silently in continuous mode
+
+                        const estado = String(eq.Estado_Disp || "").toLowerCase();
+                        if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('baja')) {
+                            // Optionally, we could show a toast here, but alerts interrupt scanning.
+                            // So we just ignore it for the scanner.
+                            return;
+                        }
                     }
 
                     setScannedItems(prev => {
@@ -199,7 +207,7 @@ export default function MantenimientoBatchOut() {
                 setPdfUrl(finalBlobUrl);
                 setPdfName(resRemito.fileName || 'Remito_Salida_Lote.pdf');
             } else {
-                alert("Extintores despachados, pero hubo un error generando el PDF. Puedes intentar en la vista Pañol.");
+                alert(`Extintores despachados, pero hubo un error generando el PDF: ${resRemito?.message || 'Error desconocido'}. Puedes intentar en la vista Pañol.`);
             }
 
             setScannedItems([]);
@@ -251,10 +259,19 @@ export default function MantenimientoBatchOut() {
                 const id = manualId.trim().toUpperCase();
                 if (!id) return;
 
-                // Validate
-                if (Object.keys(extintoresDb).length > 0 && !extintoresDb[id]) {
-                    alert(`El extintor Nº ${id} no está en el sistema. Asegúrate de darlo de alta primero.`);
-                    return;
+                // Validate existence
+                if (Object.keys(extintoresDb).length > 0) {
+                    const eq = extintoresDb[id];
+                    if (!eq) {
+                        alert(`El extintor Nº ${id} no está en el sistema. Asegúrate de darlo de alta primero.`);
+                        return;
+                    }
+
+                    const estado = String(eq.Estado_Disp || "").toLowerCase();
+                    if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('baja')) {
+                        alert(`El extintor Nº ${id} ya se encuentra "${eq.Estado_Disp}". No puedes enviarlo de nuevo a mantenimiento.`);
+                        return;
+                    }
                 }
 
                 setScannedItems(prev => {
