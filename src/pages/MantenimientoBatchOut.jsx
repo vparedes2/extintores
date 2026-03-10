@@ -8,6 +8,7 @@ export default function MantenimientoBatchOut() {
     const [isScanning, setIsScanning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [pdfUrl, setPdfUrl] = useState(null);
+    const [pdfName, setPdfName] = useState('');
     const [formData, setFormData] = useState({
         proveedor: '',
         motivo: 'Mantenimiento General / Recarga',
@@ -196,13 +197,7 @@ export default function MantenimientoBatchOut() {
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 const finalBlobUrl = URL.createObjectURL(blob);
                 setPdfUrl(finalBlobUrl);
-
-                const link = document.createElement('a');
-                link.href = finalBlobUrl;
-                link.download = resRemito.fileName || 'Remito_Salida_Lote.pdf';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                setPdfName(resRemito.fileName || 'Remito_Salida_Lote.pdf');
             }
 
             setScannedItems([]);
@@ -361,11 +356,44 @@ export default function MantenimientoBatchOut() {
                 </button>
 
                 {pdfUrl && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid var(--success)', textAlign: 'center' }}>
-                        <p style={{ color: 'var(--success)', marginBottom: '0.5rem', fontWeight: 'bold' }}>✅ ¡Lote Procesado Exitosamente!</p>
-                        <a href={pdfUrl} download="Remito_Salida_Lote.pdf" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>
-                            Clic aquí para descargar el Remito PDF
-                        </a>
+                    <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid var(--success)', textAlign: 'center' }}>
+                            <p style={{ color: 'var(--success)', margin: 0, fontWeight: 'bold' }}>✅ ¡Lote Procesado Exitosamente!</p>
+                        </div>
+
+                        {/* VISOR INTEGRADO */}
+                        <div style={{ width: '100%', height: '600px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                            <iframe
+                                src={pdfUrl}
+                                title="Visor de Remito Lotes"
+                                width="100%"
+                                height="100%"
+                                style={{ border: 'none' }}
+                            />
+                        </div>
+
+                        {/* ACCIONES */}
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ flex: 1 }}
+                                onClick={() => {
+                                    const iframe = document.querySelector('iframe[title="Visor de Remito Lotes"]');
+                                    if (iframe) iframe.contentWindow.print();
+                                }}
+                            >
+                                Imprimir Remito
+                            </button>
+                            <a
+                                href={pdfUrl}
+                                download={pdfName}
+                                className="btn btn-primary"
+                                style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+                            >
+                                Descargar Copia
+                            </a>
+                        </div>
                     </div>
                 )}
             </form>

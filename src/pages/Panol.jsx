@@ -7,6 +7,8 @@ export default function Panol() {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [pdfName, setPdfName] = useState('');
 
     // Remito Form State
     const [remitoData, setRemitoData] = useState({
@@ -61,6 +63,7 @@ export default function Panol() {
         }
 
         setDownloading(true);
+        setPdfUrl(null);
         try {
             const response = await sendToSheet({
                 action: 'export_remito',
@@ -79,13 +82,8 @@ export default function Panol() {
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 const finalBlobUrl = URL.createObjectURL(blob);
 
-                // Forzar descarga directa (ideal para celulares y web)
-                const link = document.createElement('a');
-                link.href = finalBlobUrl;
-                link.download = response.fileName || 'Remito_Salida.pdf';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                setPdfUrl(finalBlobUrl);
+                setPdfName(response.fileName || 'Remito_Salida.pdf');
             } else {
                 alert('Error al generar el remito: ' + (response?.message || 'Respuesta vacía'));
             }
@@ -172,6 +170,45 @@ export default function Panol() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* VISOR DE PDF REMITO INTEGRADO */}
+            {pdfUrl && (
+                <div className="glass-card" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--success)' }}>✅ Remito Generado Exitosamente</h3>
+
+                    <div style={{ width: '100%', height: '600px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                        <iframe
+                            src={pdfUrl}
+                            title="Visor de Remito PDF"
+                            width="100%"
+                            height="100%"
+                            style={{ border: 'none' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ flex: 1 }}
+                            onClick={() => {
+                                const iframe = document.querySelector('iframe[title="Visor de Remito PDF"]');
+                                if (iframe) iframe.contentWindow.print();
+                            }}
+                        >
+                            Imprimir Remito
+                        </button>
+                        <a
+                            href={pdfUrl}
+                            download={pdfName}
+                            className="btn btn-primary"
+                            style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+                        >
+                            Descargar PDF
+                        </a>
+                    </div>
                 </div>
             )}
         </div>
