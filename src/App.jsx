@@ -12,6 +12,7 @@ import Reportes from './pages/Reportes';
 import Panol from './pages/Panol';
 import MantenimientoOut from './pages/MantenimientoOut';
 import MantenimientoIn from './pages/MantenimientoIn';
+import MantenimientoBatchOut from './pages/MantenimientoBatchOut';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
           <Route path="/panol" element={<Panol />} />
           <Route path="/mto-out" element={<MantenimientoOut />} />
           <Route path="/mto-in" element={<MantenimientoIn />} />
+          <Route path="/mto-batch" element={<MantenimientoBatchOut />} />
         </Routes>
       </main>
 

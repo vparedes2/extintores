@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Wrench, PackageSearch, Loader } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Wrench, PackageSearch, Loader, Layers } from 'lucide-react';
 import { fetchExtintores } from '../services/api';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
     const [loading, setLoading] = useState(true);
@@ -78,6 +79,14 @@ export default function Dashboard() {
                         <p style={{ fontSize: '0.875rem', margin: 0, color: 'var(--text-main)' }}>{stat.label}</p>
                     </div>
                 ))}
+            </section>
+
+            <section className="glass-card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h3 style={{ margin: 0 }}>Logística Avanzada</h3>
+                <Link to="/mto-batch" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                    <Layers size={20} />
+                    Despacho por Lote (Mantenimiento)
+                </Link>
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem' }}>
