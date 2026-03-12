@@ -97,18 +97,52 @@ function doPost(e) {
                 timestamp, 'INGRESO', data.extintorId, data.fecha, data.proveedor, data.trabajos, data.observaciones, data.remito, data.responsable, clCarga, clPH, chkVis
             ]);
         } else if (action === 'get_current_state') {
+            const normalizeKey = (rawHeader) => {
+                const h = String(rawHeader).toLowerCase().trim();
+                const clean = h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+                if (clean.includes('time') || clean === 'fecha') return 'Timestamp';
+                if (clean.includes('interno')) return 'N_Interno';
+                if (clean.includes('recipiente') || clean.includes('fabrica')) return 'N_Recipiente';
+                if (clean.includes('ubicacion') || clean.includes('locacion') || clean.includes('sector')) return 'Ubicacion';
+                if (clean.includes('estado') && clean.includes('disp')) return 'Estado_Disp';
+                if (clean.includes('vencimientoph') || clean.includes('vtoph') || (clean.includes('vto') && clean.includes('ph'))) return 'Vto_PH';
+                if (clean.includes('estadodecarga') || clean.includes('vtocarga') || clean.includes('vencimientocarga') || (clean.includes('vto') && clean.includes('carga'))) return 'Vto_Carga';
+                if (clean.includes('capacidad') || clean.includes('peso')) return 'Capacidad';
+                if (clean.includes('agente') || clean.includes('tipo')) return 'Agente';
+                if (clean.includes('placa') || clean.includes('tarjeta') || clean.includes('identif')) return 'Tarjeta_ID';
+                if (clean.includes('manometro')) return 'Manometro';
+                if (clean.includes('palanca') || clean.includes('manija')) return 'Palanca';
+                if (clean.includes('manguera') || clean.includes('boquilla')) return 'Manguera';
+                if (clean.includes('seguro') || clean.includes('precinto')) return 'Precinto';
+                if (clean.includes('soporte')) return 'Soporte';
+                if (clean.includes('tipomovimiento')) return 'Tipo_Movimiento';
+                if (clean.includes('proveedor')) return 'Proveedor';
+                if (clean.includes('motivo') || clean.includes('trabajo')) return 'Motivo_Trabajo';
+                if (clean.includes('nuevovto') && clean.includes('carga')) return 'Nuevo_Vto_Carga';
+                if (clean.includes('nuevovto') && clean.includes('ph')) return 'Nuevo_Vto_PH';
+                if (clean.includes('destino')) return 'Destino';
+
+                return rawHeader;
+            };
+
             const getAllDataFromSheet = (sheetObj) => {
                 if (!sheetObj) return [];
                 const dataRange = sheetObj.getDataRange();
                 const values = dataRange.getValues();
                 if (values.length <= 1) return [];
-                const headers = values[0];
+
+                const rawHeaders = values[0];
+                const cleanHeaders = rawHeaders.map(normalizeKey);
+
                 const rows = values.slice(1);
                 return rows.map(row => {
                     let obj = {};
-                    headers.forEach((header, index) => {
-                        obj[header] = row[index];
+                    cleanHeaders.forEach((key, index) => {
+                        obj[key] = row[index];
                     });
+                    if (!obj.hasOwnProperty('N_Interno')) obj.N_Interno = '';
+                    if (!obj.hasOwnProperty('N_Recipiente')) obj.N_Recipiente = '';
                     return obj;
                 });
             };
@@ -127,12 +161,12 @@ function doPost(e) {
             const equipos = new Map();
 
             dataAlta.forEach(a => {
-                const id = String(a.N_Interno).trim();
+                const id = String(a.N_Recipiente || a.N_Interno).trim();
                 equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
             });
 
             dataChecklist.forEach(c => {
-                const id = String(c.N_Interno).trim();
+                const id = String(c.N_Recipiente || c.N_Interno).trim();
                 const ts = safeParseDate(c.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
@@ -147,7 +181,7 @@ function doPost(e) {
             });
 
             dataManto.forEach(m => {
-                const id = String(m.N_Interno).trim();
+                const id = String(m.N_Recipiente || m.N_Interno).trim();
                 // En mantenimiento usamos Timestamp para desempate si la tabla se carga rapido
                 const ts = safeParseDate(m.Timestamp);
                 if (equipos.has(id)) {
@@ -170,7 +204,7 @@ function doPost(e) {
             });
 
             dataBaja.forEach(b => {
-                const id = String(b.N_Interno).trim();
+                const id = String(b.N_Recipiente || b.N_Interno).trim();
                 const ts = safeParseDate(b.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
