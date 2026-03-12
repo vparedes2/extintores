@@ -61,13 +61,8 @@ export default function Scanner() {
 
         const searchStr = code.trim().toUpperCase();
 
-        // 1. Prioritize searching by N_Interno first (Internal ID)
-        let match = dbData.find(e => e.N_Interno && e.N_Interno.toString().trim().toUpperCase() === searchStr);
-
-        // 2. If not found, fallback to searching by N_Recipiente (Factory Serial)
-        if (!match) {
-            match = dbData.find(e => e.N_Recipiente && e.N_Recipiente.toString().trim().toUpperCase() === searchStr);
-        }
+        // 1. ALWAYS search by N_Recipiente (Factory Serial) exclusively, per user request.
+        let match = dbData.find(e => e.N_Recipiente && e.N_Recipiente.toString().trim().toUpperCase() === searchStr);
 
         if (match) {
             setFoundExtintor(match);
@@ -138,7 +133,7 @@ export default function Scanner() {
                         <>
                             <div style={{ padding: '2rem 1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                                 <h3 style={{ color: 'var(--text-main)', marginBottom: '0.5rem' }}>Extintor Identificado</h3>
-                                <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', margin: 0 }}>{foundExtintor.N_Interno}</p>
+                                <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981', margin: 0 }}>ID Fábrica: {foundExtintor.N_Recipiente}</p>
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Capacidad: {foundExtintor.Capacidad}kg | Vto Carga: {foundExtintor.Vto_Carga}</p>
                             </div>
 

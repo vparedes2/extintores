@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckSquare, MapPin } from 'lucide-react';
-import { sendToSheet } from '../services/api';
+import { sendToSheet, fetchExtintores } from '../services/api';
 
 export default function ChecklistForm() {
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
 
-    const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Interno || '';
+    // Si venimos del escáner, se envía extintorId que es el N_Recipiente, o extintorData.N_Recipiente
+    const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Recipiente || '';
     const initialData = location.state?.extintorData || {};
 
     // Parsear string de fecha a YYYY-MM para el input type="month"
@@ -99,7 +100,21 @@ export default function ChecklistForm() {
         e.preventDefault();
         setLoading(true);
         try {
-            await sendToSheet({ action: 'checklist', ...formData });
+            const allExt = await fetchExtintores();
+            const inputId = String(formData.extintorId).toLowerCase().trim();
+
+            // Buscar por N_Recipiente que es la PK visual actual
+            const realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+
+            if (!realExtintor && !initialData.N_Interno) {
+                alert(`Error: El extintor con ID de Fábrica "${formData.extintorId}" no existe en el sistema.`);
+                setLoading(false);
+                return;
+            }
+
+            const internalId = realExtintor ? realExtintor.N_Interno : initialData.N_Interno;
+
+            await sendToSheet({ ...formData, action: 'checklist', extintorId: internalId });
             alert('Checklist enviado correctamente');
             navigate('/');
         } catch (error) {
@@ -134,12 +149,13 @@ export default function ChecklistForm() {
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Interno</label>
-                            <input required name="extintorId" value={formData.extintorId} onChange={handleChange} />
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold' }}>Nº Recipiente (Fábrica)</label>
+                            <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej: 794074" />
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Recipiente</label>
-                            <input required name="nRecipiente" value={formData.nRecipiente} onChange={handleChange} placeholder="Ej. 129384AB" />
+                        <div style={{ flex: 1, display: 'none' }}>
+                            {/* Oculto, ya no se usa N_Recipiente manual porque el principal ahora es el fábrica */}
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Recipiente (Legacy)</label>
+                            <input name="nRecipiente" value={formData.nRecipiente} onChange={handleChange} />
                         </div>
                     </div>
                     <div>

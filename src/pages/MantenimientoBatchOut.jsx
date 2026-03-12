@@ -32,11 +32,13 @@ export default function MantenimientoBatchOut() {
                 });
                 const json = await response.json();
                 if (json.status === 'success' && json.items) {
-                    const dbMap = {};
+                    const dbMapNRec = {};
                     json.items.forEach(eq => {
-                        dbMap[String(eq.N_Interno).toUpperCase()] = eq;
+                        if (eq.N_Recipiente) {
+                            dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
+                        }
                     });
-                    setExtintoresDb(dbMap);
+                    setExtintoresDb(dbMapNRec);
                 }
             } catch (error) {
                 console.error("Error cargando BD para el Remito:", error);
@@ -94,7 +96,7 @@ export default function MantenimientoBatchOut() {
                         // Evitar duplicados
                         if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
                         playScanSound();
-                        return [...prev, { id, timestamp: new Date() }];
+                        return [...prev, { id, nInterno: extintoresDb[id]?.N_Interno || id, timestamp: new Date() }];
                     });
                 },
                 (errorMessage) => {
@@ -160,7 +162,7 @@ export default function MantenimientoBatchOut() {
             const pmises = scannedItems.map(item =>
                 sendToSheet({
                     action: 'mto_out',
-                    extintorId: item.id,
+                    extintorId: item.nInterno || item.id, // Backend strictly requires N_Interno
                     fecha: hoy,
                     proveedor: formData.proveedor,
                     motivo: formData.motivo,
@@ -277,7 +279,7 @@ export default function MantenimientoBatchOut() {
                 setScannedItems(prev => {
                     if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
                     if (isScanning) playScanSound();
-                    return [...prev, { id: id, timestamp: new Date() }];
+                    return [...prev, { id: id, nInterno: extintoresDb[id]?.N_Interno || id, timestamp: new Date() }];
                 });
                 setManualId('');
             }} className="glass-card" style={{ marginBottom: '1.5rem' }}>
@@ -285,7 +287,7 @@ export default function MantenimientoBatchOut() {
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                     <input
                         type="text"
-                        placeholder="Ej: 004..."
+                        placeholder="Ej: 794074 (Nº Fábrica)"
                         value={manualId}
                         onChange={(e) => setManualId(e.target.value)}
                         style={{ margin: 0, flex: 1 }}
@@ -309,7 +311,7 @@ export default function MantenimientoBatchOut() {
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {scannedItems.map((item, index) => (
                             <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
-                                <span><strong>{index + 1}.</strong> ID: {item.id}</span>
+                                <span><strong>{index + 1}.</strong> ID Fábrica: {item.id}</span>
                                 <button type="button" onClick={() => removeItem(item.id)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}>
                                     <Trash2 size={18} />
                                 </button>

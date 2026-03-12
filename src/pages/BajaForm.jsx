@@ -8,8 +8,8 @@ export default function BajaForm() {
     const location = useLocation();
     const [loading, setLoading] = useState(false);
 
-    // Si venimos del escáner, esto tendrá un valor
-    const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Interno || '';
+    // Si venimos del escáner, esto tendrá el N_Recipiente escaneado
+    const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Recipiente || '';
 
     const [formData, setFormData] = useState({
         extintorId: initialExtintorId,
@@ -30,15 +30,18 @@ export default function BajaForm() {
         try {
             const allExt = await fetchExtintores();
             const inputId = String(formData.extintorId).toLowerCase().trim();
-            const exists = allExt.some(ext => String(ext.N_Interno).toLowerCase().trim() === inputId);
 
-            if (!exists) {
-                alert(`Error: El extintor "${formData.extintorId}" no existe en el registro. Por favor, verifica el ID o dale de Alta primero.`);
+            // Buscar por N_Recipiente porque ahora es el valor visual principal!
+            const realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+
+            if (!realExtintor) {
+                alert(`Error: El extintor con ID de Fábrica "${formData.extintorId}" no existe en el registro.`);
                 setLoading(false);
                 return;
             }
 
-            await sendToSheet({ action: 'baja', ...formData });
+            // Ocultamente mandamos el N_Interno al backend
+            await sendToSheet({ ...formData, action: 'baja', extintorId: realExtintor.N_Interno });
             alert('Se ha registrado el movimiento del extintor.');
             navigate('/');
         } catch (error) {
@@ -65,8 +68,8 @@ export default function BajaForm() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo</label>
-                    <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Escanea o ingresa el código..." />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica / Recipiente)</label>
+                    <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074" />
                 </div>
 
                 <div>

@@ -130,7 +130,7 @@ export default function Panol() {
                         <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         <input
                             type="text"
-                            placeholder="Buscar por Nº Interno (ej. 34) p/ filtrar el remito..."
+                            placeholder="Buscar por Nº Fábrica (ej. 794074) p/ filtrar el remito..."
                             style={{ paddingLeft: '2.8rem', margin: 0 }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -162,9 +162,9 @@ export default function Panol() {
                                     <Truck size={24} />
                                 </div>
                                 <div>
-                                    <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{ext.nInterno} <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 'normal' }}>({ext.capacidad}kg {ext.tipo})</span></h4>
+                                    <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Fábrica: {ext.nRecipiente || 'S/D'} <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 'normal' }}>({ext.capacidad}kg {ext.tipo})</span></h4>
                                     <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        Nº Recipiente: <strong style={{ color: 'var(--text)' }}>{ext.nRecipiente}</strong> | Origen: {ext.ubicacion}
+                                        Interno: <span style={{ color: 'var(--text-muted)' }}>{ext.nInterno || 'S/D'}</span> | Origen: {ext.ubicacion}
                                     </p>
                                 </div>
                             </div>
