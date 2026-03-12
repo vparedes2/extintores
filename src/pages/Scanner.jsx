@@ -59,11 +59,15 @@ export default function Scanner() {
     const handleScanCode = (code) => {
         setScanResult(code);
 
-        // Buscar si el código escaneado existe en la base descargada
-        const match = dbData.find(e =>
-            (e.N_Interno && e.N_Interno.toString().trim() === code.trim()) ||
-            (e.N_Recipiente && e.N_Recipiente.toString().trim() === code.trim())
-        );
+        const searchStr = code.trim().toUpperCase();
+
+        // 1. Prioritize searching by N_Interno first (Internal ID)
+        let match = dbData.find(e => e.N_Interno && e.N_Interno.toString().trim().toUpperCase() === searchStr);
+
+        // 2. If not found, fallback to searching by N_Recipiente (Factory Serial)
+        if (!match) {
+            match = dbData.find(e => e.N_Recipiente && e.N_Recipiente.toString().trim().toUpperCase() === searchStr);
+        }
 
         if (match) {
             setFoundExtintor(match);
