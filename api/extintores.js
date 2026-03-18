@@ -15,9 +15,9 @@ export default async function handler(req, res) {
   }
 
   const SCRIPT_URL =
-    process.env.GAS_URL ||
-    "https://script.google.com/macros/s/AKfycbw3_i4kSO1sUGjNX3CkmsRqxRGgh9IrRtumK-xxsCYFj3RUDb84QvIz1bndcvRyo77Xyg/exec";
-
+  process.env.GAS_URL ||
+  "https://script.google.com/macros/s/AKfycbxtazl3Y5KP04rl6YzEhea6Q_FwP2J7WBcUf1IN3hu5IiHwu6tdHxA-PQ9AB4CvlmD2cw/exec";
+  
   try {
     if (req.method !== "POST") {
       return res.status(405).json({
