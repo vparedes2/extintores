@@ -14,10 +14,9 @@ export default async function handler(req, res) {
     return;
   }
 
-
 const SCRIPT_URL =
   process.env.GAS_URL ||
-  "https://script.google.com/macros/s/AKfycbwAy7dDIUCcJmEG_SY0e-JJt7pfftUrB3h1WAJnnzibEJVsSXJjygO7tnfTENwVG8gkqg/exec";
+  "https://script.google.com/macros/s/AKfycbyf3NmCuC_dI1QoZ28AHU07ZwBymk5YPdHDl5wPE7cG4_1xJHZu5zyritTZ59_PQr-Mhw/exec";
   
   try {
     if (req.method !== "POST") {
