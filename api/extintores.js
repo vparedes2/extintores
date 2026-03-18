@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
 const SCRIPT_URL =
   process.env.GAS_URL ||
-  "https://script.google.com/macros/s/AKfycbyf3NmCuC_dI1QoZ28AHU07ZwBymk5YPdHDl5wPE7cG4_1xJHZu5zyritTZ59_PQr-Mhw/exec";
+  "https://script.google.com/macros/s/AKfycbxM4TYV2_2tzqjGTV6djxK-1eq2dKR60WXUX7jlvFFlsdvz6gGt5VvwQqUQmuOg7AfrGQ/exec";
   
   try {
     if (req.method !== "POST") {
