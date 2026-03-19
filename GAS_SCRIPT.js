@@ -161,12 +161,12 @@ function doPost(e) {
             const equipos = new Map();
 
             dataAlta.forEach(a => {
-                const id = String(a.N_Recipiente || a.N_Interno).trim();
+                const id = String(a.N_Interno || a.N_Recipiente).trim();
                 equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
             });
 
             dataChecklist.forEach(c => {
-                const id = String(c.N_Recipiente || c.N_Interno).trim();
+                const id = String(c.N_Interno || c.N_Recipiente).trim();
                 const ts = safeParseDate(c.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
@@ -181,7 +181,7 @@ function doPost(e) {
             });
 
             dataManto.forEach(m => {
-                const id = String(m.N_Recipiente || m.N_Interno).trim();
+                const id = String(m.N_Interno || m.N_Recipiente).trim();
                 // En mantenimiento usamos Timestamp para desempate si la tabla se carga rapido
                 const ts = safeParseDate(m.Timestamp);
                 if (equipos.has(id)) {
@@ -204,7 +204,7 @@ function doPost(e) {
             });
 
             dataBaja.forEach(b => {
-                const id = String(b.N_Recipiente || b.N_Interno).trim();
+                const id = String(b.N_Interno || b.N_Recipiente).trim();
                 const ts = safeParseDate(b.Timestamp);
                 if (equipos.has(id)) {
                     let eq = equipos.get(id);
