@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CheckCircle, Package, Send, Trash2, StopCircle } from 'lucide-react';
+import { Camera, CheckCircle, Package, Send, Trash2, StopCircle, X } from 'lucide-react';
 import { sendToSheet } from '../services/api';
 
 export default function MantenimientoBatchOut() {
@@ -18,6 +18,11 @@ export default function MantenimientoBatchOut() {
     const [manualId, setManualId] = useState('');
     const [extintoresDb, setExtintoresDb] = useState({});
 
+    const [proveedores, setProveedores] = useState([]);
+    const [showAddProvModal, setShowAddProvModal] = useState(false);
+    const [newProvName, setNewProvName] = useState('');
+    const [savingProv, setSavingProv] = useState(false);
+
     const qrRef = useRef(null);
 
     // Cargar base de datos al iniciar para cruzar datos en el PDF
@@ -31,17 +36,22 @@ export default function MantenimientoBatchOut() {
                     body: JSON.stringify({ action: 'get_current_state' }),
                 });
                 const json = await response.json();
-                if (json.status === 'success' && json.items) {
-                    const dbMapNRec = {};
-                    json.items.forEach(eq => {
-                        if (eq.N_Recipiente) {
-                            dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
-                        }
-                        if (eq.N_Interno) {
-                            dbMapNRec[String(eq.N_Interno).toUpperCase()] = eq; // Fallback para búsqueda manual
-                        }
-                    });
-                    setExtintoresDb(dbMapNRec);
+                if (json.status === 'success') {
+                    if (json.proveedores) {
+                        setProveedores(json.proveedores);
+                    }
+                    if (json.items) {
+                        const dbMapNRec = {};
+                        json.items.forEach(eq => {
+                            if (eq.N_Recipiente) {
+                                dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
+                            }
+                            if (eq.N_Interno) {
+                                dbMapNRec[String(eq.N_Interno).toUpperCase()] = eq; // Fallback para búsqueda manual
+                            }
+                        });
+                        setExtintoresDb(dbMapNRec);
+                    }
                 }
             } catch (error) {
                 console.error("Error cargando BD para el Remito:", error);
@@ -49,6 +59,26 @@ export default function MantenimientoBatchOut() {
         };
         loadDocs();
     }, []);
+
+    const handleSaveNewProvider = async () => {
+        if (!newProvName.trim()) return;
+        setSavingProv(true);
+        try {
+            const res = await sendToSheet({ action: "add_proveedor", proveedor: newProvName.trim() });
+            if (res && res.status === 'success') {
+                setFormData(prev => ({ ...prev, proveedor: newProvName.trim() }));
+                setProveedores(prev => [...prev, newProvName.trim()]);
+                setShowAddProvModal(false);
+                setNewProvName('');
+            } else {
+                alert("Error guardando proveedor: " + (res?.message || 'Error'));
+            }
+        } catch (e) {
+            alert("Error de conexión al guardar proveedor.");
+        } finally {
+            setSavingProv(false);
+        }
+    };
 
     // Reproducir sonido al escanear
     const playScanSound = () => {
@@ -328,13 +358,25 @@ export default function MantenimientoBatchOut() {
                 <h3 style={{ marginTop: 0 }}>Parámetros de Despacho</h3>
                 <div className="form-group">
                     <label>Proveedor / Empresa</label>
-                    <input
-                        type="text"
+                    <select
                         required
-                        placeholder="Ej. Matafuegos Sur S.A."
                         value={formData.proveedor}
-                        onChange={e => setFormData({ ...formData, proveedor: e.target.value })}
-                    />
+                        onChange={(e) => {
+                            if (e.target.value === '__NEW__') {
+                                setShowAddProvModal(true);
+                            } else {
+                                setFormData({ ...formData, proveedor: e.target.value });
+                            }
+                        }}
+                        className="input-select"
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--glass)', color: 'white' }}
+                    >
+                        <option value="" disabled>Seleccionar Proveedor...</option>
+                        {proveedores.map((p, i) => (
+                            <option key={i} value={p}>{p}</option>
+                        ))}
+                        <option value="__NEW__" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>＋ Agregar Nuevo Proveedor...</option>
+                    </select>
                 </div>
 
                 <div className="form-group">
@@ -420,6 +462,34 @@ export default function MantenimientoBatchOut() {
                     </div>
                 )}
             </form>
+
+            {/* Modal para Agregar Proveedor */}
+            {showAddProvModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(5px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="glass-card animate-scale-up" style={{ width: '90%', maxWidth: '400px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Registrar Proveedor</h3>
+                            <button onClick={e => setShowAddProvModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Nombre de la empresa externa..."
+                            value={newProvName}
+                            onChange={(e) => setNewProvName(e.target.value)}
+                            autoFocus
+                        />
+                        <button className="btn-primary" onClick={handleSaveNewProvider} disabled={savingProv || !newProvName.trim()} style={{ width: '100%', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                            {savingProv ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : 'Guardar Proveedor Oficial'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

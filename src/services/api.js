@@ -52,3 +52,20 @@ export const fetchExtintores = async () => {
     return [];
   }
 };
+
+export const fetchAppState = async () => {
+  if (!API_URL) return null;
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "get_current_state" }),
+    });
+    const json = await response.json();
+    return json.status === "success" ? json : null;
+  } catch (error) {
+    console.error("fetchAppState error:", error);
+    return null;
+  }
+};
+

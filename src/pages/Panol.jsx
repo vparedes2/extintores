@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Search, Download, ShieldAlert } from 'lucide-react';
-import { fetchExtintores, sendToSheet } from '../services/api';
+import { Truck, Search, Download, ShieldAlert, Plus, X } from 'lucide-react';
+import { fetchAppState, sendToSheet } from '../services/api';
 
 export default function Panol() {
     const [extintoresPañol, setExtintoresPañol] = useState([]);
+    const [proveedores, setProveedores] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
@@ -16,12 +17,24 @@ export default function Panol() {
         motivo: 'Mantenimiento General / Recarga'
     });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const data = await fetchExtintores();
-                if (data && data.length > 0) {
-                    const enPañol = data.filter(ext => {
+    const [showAddProvModal, setShowAddProvModal] = useState(false);
+    const [newProvName, setNewProvName] = useState('');
+    const [savingProv, setSavingProv] = useState(false);
+
+    const fetchData = async () => {
+        try {
+            const dataState = await fetchAppState();
+            if (dataState) {
+                if (dataState.proveedores) {
+                    setProveedores(dataState.proveedores);
+                    if (dataState.proveedores.length > 0 && !remitoData.proveedor) {
+                        setRemitoData(prev => ({ ...prev, proveedor: dataState.proveedores[0] }));
+                    }
+                }
+
+                const items = dataState.items || [];
+                if (items.length > 0) {
+                    const enPañol = items.filter(ext => {
                         const estado = (ext.Estado_Disp || "").toLowerCase();
                         return estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible');
                     });
@@ -44,14 +57,37 @@ export default function Panol() {
 
                     setExtintoresPañol(mapped);
                 }
-            } catch (error) {
-                console.error("Error fetching pañol data", error);
-            } finally {
-                setLoading(false);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching pañol data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchData();
     }, []);
+
+    const handleSaveNewProvider = async () => {
+        if (!newProvName.trim()) return;
+        setSavingProv(true);
+        try {
+            const res = await sendToSheet({ action: "add_proveedor", proveedor: newProvName.trim() });
+            if (res && res.status === 'success') {
+                setRemitoData(prev => ({ ...prev, proveedor: newProvName.trim() }));
+                setShowAddProvModal(false);
+                setNewProvName('');
+                await fetchData(); // Recargar lista para que aparezca en todos
+            } else {
+                alert("Error guardando proveedor: " + (res?.message || 'Error'));
+            }
+        } catch (e) {
+            alert("Error de conexión al guardar proveedor.");
+        } finally {
+            setSavingProv(false);
+        }
+    };
 
     const filteredList = extintoresPañol.filter(ext =>
         (ext.nInterno && String(ext.nInterno).toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -116,13 +152,24 @@ export default function Panol() {
             <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generar Remito de Salida a Proveedor</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <input
-                        type="text"
-                        placeholder="Nombre del Proveedor (Ej. Matafuegos Sur)"
-                        value={remitoData.proveedor}
-                        onChange={(e) => setRemitoData({ ...remitoData, proveedor: e.target.value })}
-                        style={{ margin: 0 }}
-                    />
+                        <select
+                            value={remitoData.proveedor}
+                            onChange={(e) => {
+                                if (e.target.value === '__NEW__') {
+                                    setShowAddProvModal(true);
+                                } else {
+                                    setRemitoData({ ...remitoData, proveedor: e.target.value });
+                                }
+                            }}
+                            className="input-select"
+                            style={{ margin: 0, width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                        >
+                            <option value="" disabled>Seleccionar Proveedor...</option>
+                            {proveedores.map((p, i) => (
+                                <option key={i} value={p}>{p}</option>
+                            ))}
+                            <option value="__NEW__" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>＋ Agregar Nuevo Proveedor...</option>
+                        </select>
                     <input
                         type="text"
                         placeholder="Motivo General (Ej. Recarga)"
@@ -215,6 +262,34 @@ export default function Panol() {
                         >
                             Descargar PDF
                         </a>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal para Agregar Proveedor */}
+            {showAddProvModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(5px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="glass-card animate-scale-up" style={{ width: '90%', maxWidth: '400px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Registrar Proveedor</h3>
+                            <button onClick={() => setShowAddProvModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Nombre de la empresa externa..."
+                            value={newProvName}
+                            onChange={(e) => setNewProvName(e.target.value)}
+                            autoFocus
+                        />
+                        <button className="btn-primary" onClick={handleSaveNewProvider} disabled={savingProv || !newProvName.trim()} style={{ width: '100%', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                            {savingProv ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : 'Guardar Proveedor Oficial'}
+                        </button>
                     </div>
                 </div>
             )}

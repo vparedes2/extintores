@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader } from 'lucide-react';
-import { sendToSheet } from '../services/api';
+import { ArrowLeft, Save, Loader, X } from 'lucide-react';
+import { sendToSheet, fetchAppState } from '../services/api';
 
 export default function MantenimientoOut() {
     const location = useLocation();
@@ -19,13 +19,47 @@ export default function MantenimientoOut() {
         responsable: ''
     });
 
+    const [proveedores, setProveedores] = useState([]);
+    const [showAddProvModal, setShowAddProvModal] = useState(false);
+    const [newProvName, setNewProvName] = useState('');
+    const [savingProv, setSavingProv] = useState(false);
+
     useEffect(() => {
         if (location.state && location.state.extintorData) {
             setExtintor(location.state.extintorData);
         } else {
             navigate('/scanner');
         }
+
+        const loadProveedores = async () => {
+            const dataState = await fetchAppState();
+            if (dataState && dataState.proveedores) {
+                setProveedores(dataState.proveedores);
+            }
+        };
+        loadProveedores();
+
     }, [location, navigate]);
+
+    const handleSaveNewProvider = async () => {
+        if (!newProvName.trim()) return;
+        setSavingProv(true);
+        try {
+            const res = await sendToSheet({ action: "add_proveedor", proveedor: newProvName.trim() });
+            if (res && res.status === 'success') {
+                setFormData(prev => ({ ...prev, proveedor: newProvName.trim() }));
+                setProveedores(prev => [...prev, newProvName.trim()]);
+                setShowAddProvModal(false);
+                setNewProvName('');
+            } else {
+                alert("Error guardando proveedor: " + (res?.message || 'Error'));
+            }
+        } catch (e) {
+            alert("Error de conexión al guardar proveedor.");
+        } finally {
+            setSavingProv(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -94,7 +128,25 @@ export default function MantenimientoOut() {
 
                 <div className="form-group">
                     <label>Proveedor / Empresa</label>
-                    <input type="text" required placeholder="Ej. Matafuegos Patagonia SRL" value={formData.proveedor} onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })} />
+                    <select
+                        required
+                        value={formData.proveedor}
+                        onChange={(e) => {
+                            if (e.target.value === '__NEW__') {
+                                setShowAddProvModal(true);
+                            } else {
+                                setFormData({ ...formData, proveedor: e.target.value });
+                            }
+                        }}
+                        className="input-select"
+                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--glass)', color: 'white' }}
+                    >
+                        <option value="" disabled>Seleccionar Proveedor...</option>
+                        {proveedores.map((p, i) => (
+                            <option key={i} value={p}>{p}</option>
+                        ))}
+                        <option value="__NEW__" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>＋ Agregar Nuevo Proveedor...</option>
+                    </select>
                 </div>
 
                 <div className="form-group">
@@ -126,6 +178,34 @@ export default function MantenimientoOut() {
                     {loading ? <Loader className="spin" size={20} /> : 'Registrar Salida a Proveedor'}
                 </button>
             </form>
+
+            {/* Modal para Agregar Proveedor */}
+            {showAddProvModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(5px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="glass-card animate-scale-up" style={{ width: '90%', maxWidth: '400px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Registrar Proveedor</h3>
+                            <button onClick={e => setShowAddProvModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Nombre de la empresa externa..."
+                            value={newProvName}
+                            onChange={(e) => setNewProvName(e.target.value)}
+                            autoFocus
+                        />
+                        <button className="btn-primary" onClick={handleSaveNewProvider} disabled={savingProv || !newProvName.trim()} style={{ width: '100%', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                            {savingProv ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : 'Guardar Proveedor Oficial'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
