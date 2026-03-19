@@ -61,8 +61,13 @@ export default function Scanner() {
 
         const searchStr = code.trim().toUpperCase();
 
-        // 1. ALWAYS search by N_Recipiente (Factory Serial) exclusively, per user request.
+        // 1. ALWAYS search by N_Recipiente (Factory Serial) primarily, per user request.
         let match = dbData.find(e => e.N_Recipiente && e.N_Recipiente.toString().trim().toUpperCase() === searchStr);
+
+        // 2. Si no lo encuentra por Fábrica, buscar por el Número Interno (N_Interno) por si el usuario tipeó el código interno corto.
+        if (!match) {
+            match = dbData.find(e => e.N_Interno && e.N_Interno.toString().trim().toUpperCase() === searchStr);
+        }
 
         if (match) {
             setFoundExtintor(match);

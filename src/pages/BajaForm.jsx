@@ -31,11 +31,16 @@ export default function BajaForm() {
             const allExt = await fetchExtintores();
             const inputId = String(formData.extintorId).toLowerCase().trim();
 
-            // Buscar por N_Recipiente porque ahora es el valor visual principal!
-            const realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+            // Buscar por N_Recipiente porque ahora es el valor visual principal
+            let realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+
+            // Fallback al N_Interno por si el usuario tipeó el código interno viejo
+            if (!realExtintor) {
+                realExtintor = allExt.find(ext => ext.N_Interno && String(ext.N_Interno).toLowerCase().trim() === inputId);
+            }
 
             if (!realExtintor) {
-                alert(`Error: El extintor con ID de Fábrica "${formData.extintorId}" no existe en el registro.`);
+                alert(`Error: El extintor con código "${formData.extintorId}" no existe en el registro.`);
                 setLoading(false);
                 return;
             }
@@ -68,8 +73,8 @@ export default function BajaForm() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica / Recipiente)</label>
-                    <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074" />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica o Nº Interno)</label>
+                    <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
                 </div>
 
                 <div>

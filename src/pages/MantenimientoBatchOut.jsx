@@ -37,6 +37,9 @@ export default function MantenimientoBatchOut() {
                         if (eq.N_Recipiente) {
                             dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
                         }
+                        if (eq.N_Interno) {
+                            dbMapNRec[String(eq.N_Interno).toUpperCase()] = eq; // Fallback para búsqueda manual
+                        }
                     });
                     setExtintoresDb(dbMapNRec);
                 }
@@ -287,7 +290,7 @@ export default function MantenimientoBatchOut() {
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                     <input
                         type="text"
-                        placeholder="Ej: 794074 (Nº Fábrica)"
+                        placeholder="Ej: 794074 (Fábrica) o 6 (Interno)"
                         value={manualId}
                         onChange={(e) => setManualId(e.target.value)}
                         style={{ margin: 0, flex: 1 }}

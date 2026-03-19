@@ -104,10 +104,15 @@ export default function ChecklistForm() {
             const inputId = String(formData.extintorId).toLowerCase().trim();
 
             // Buscar por N_Recipiente que es la PK visual actual
-            const realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+            let realExtintor = allExt.find(ext => ext.N_Recipiente && String(ext.N_Recipiente).toLowerCase().trim() === inputId);
+
+            // Fallback al N_Interno por si ingresan el interno manual
+            if (!realExtintor) {
+                realExtintor = allExt.find(ext => ext.N_Interno && String(ext.N_Interno).toLowerCase().trim() === inputId);
+            }
 
             if (!realExtintor && !initialData.N_Interno) {
-                alert(`Error: El extintor con ID de Fábrica "${formData.extintorId}" no existe en el sistema.`);
+                alert(`Error: El extintor con código "${formData.extintorId}" no existe en el sistema.`);
                 setLoading(false);
                 return;
             }
@@ -149,8 +154,8 @@ export default function ChecklistForm() {
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 'bold' }}>Nº Recipiente (Fábrica)</label>
-                            <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej: 794074" />
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador (Nº Fábrica o Nº Interno)</label>
+                            <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
                         </div>
                         <div style={{ flex: 1, display: 'none' }}>
                             {/* Oculto, ya no se usa N_Recipiente manual porque el principal ahora es el fábrica */}
