@@ -26,7 +26,7 @@ function doPost(e) {
         else if (action === 'baja') sheetName = 'BAJA';
         else if (action === 'checklist') sheetName = 'CHECKLIST';
         else if (action === 'mto_out' || action === 'mto_in') sheetName = 'MANTENIMIENTO';
-        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito') sheetName = null;
+        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor') sheetName = null;
         else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
         let sheet;
@@ -454,12 +454,14 @@ function doPost(e) {
         } else if (action === 'export_pdf') {
             // == LOGICA DE GENERACION DE PDF ==
             const targetDateStr = data.fecha; // ej. "2026-02-25"
-            // Calcular proxima inspeccion (mes entrante mismo dia)
+            // Calcular proxima inspeccion (exactamente 30 días físicos después)
             let parts = targetDateStr.split('-');
             let y = parseInt(parts[0], 10);
             let m = parseInt(parts[1], 10);
             let d = parseInt(parts[2], 10);
-            let nextDateObj = new Date(y, m, d); // En JS, mes es 0-indexed, así que "m" es automáticamente el mes siguiente.
+            
+            let nextDateObj = new Date(y, m - 1, d); // Inicializar en fecha actual (mes es 0-indexed)
+            nextDateObj.setDate(nextDateObj.getDate() + 30); // Añadir 30 días físicos
 
             // Formatear DD/MM/YYYY para inyectar en hoja
             const formattedTarget = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
