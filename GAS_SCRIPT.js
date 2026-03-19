@@ -154,7 +154,37 @@ function doPost(e) {
 
             const safeParseDate = (dateVal) => {
                 if (!dateVal) return new Date(0);
-                const d = new Date(dateVal);
+                
+                // Si ya es un objeto Date nativo de Google Sheets
+                if (Object.prototype.toString.call(dateVal) === '[object Date]') {
+                    return isNaN(dateVal.getTime()) ? new Date(0) : dateVal;
+                }
+
+                const str = String(dateVal).trim();
+                let d;
+
+                // Detectar formato DD/MM/YYYY o DD-MM-YYYY (con o sin hora)
+                const latamMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(.*))?$/);
+                if (latamMatch) {
+                    const day = parseInt(latamMatch[1], 10);
+                    const month = parseInt(latamMatch[2], 10) - 1; // 0-indexed
+                    const year = parseInt(latamMatch[3], 10);
+                    const timePart = latamMatch[4] || "00:00:00";
+                    
+                    // Extraer horas y minutos si existen
+                    const timeMatch = timePart.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+                    let hours = 0, mins = 0, secs = 0;
+                    if (timeMatch) {
+                        hours = parseInt(timeMatch[1], 10);
+                        mins = parseInt(timeMatch[2], 10);
+                        secs = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+                    }
+                    d = new Date(year, month, day, hours, mins, secs);
+                } else {
+                    // Fallback al parser estandar (YYYY-MM-DD o MM/DD/YYYY)
+                    d = new Date(str);
+                }
+                
                 return isNaN(d.getTime()) ? new Date(0) : d;
             };
 
