@@ -25,8 +25,7 @@ export default function Panol() {
     const [savingProv, setSavingProv] = useState(false);
 
     const fetchData = async () => {
-        try {
-            const dataState = await fetchAppState();
+        const handleData = (dataState) => {
             if (dataState) {
                 if (dataState.proveedores) {
                     setProveedores(dataState.proveedores);
@@ -49,7 +48,6 @@ export default function Panol() {
                         estado: ext.Estado_Disp,
                         tipo: ext.Agente,
                         capacidad: ext.Capacidad,
-                        // Copias exactas para el backend GAS (export_remito)
                         N_Interno: ext.N_Interno,
                         N_Recipiente: ext.N_Recipiente,
                         Capacidad: ext.Capacidad,
@@ -61,9 +59,16 @@ export default function Panol() {
                     setExtintoresPañol(mapped);
                 }
             }
+            setLoading(false);
+        };
+
+        try {
+            await fetchAppStateWithCache(
+                (cachedData) => handleData(cachedData),
+                (freshData) => handleData(freshData)
+            );
         } catch (error) {
             console.error("Error fetching pañol data", error);
-        } finally {
             setLoading(false);
         }
     };

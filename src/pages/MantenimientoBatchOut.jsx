@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, CheckCircle, Package, Send, Trash2, StopCircle, X } from 'lucide-react';
-import { sendToSheet } from '../services/api';
+import { sendToSheet, fetchAppStateWithCache } from '../services/api';
 
 export default function MantenimientoBatchOut() {
     const [scannedItems, setScannedItems] = useState([]);
@@ -30,32 +30,32 @@ export default function MantenimientoBatchOut() {
 
     // Cargar base de datos al iniciar para cruzar datos en el PDF
     useEffect(() => {
+        const handleData = (json) => {
+            if (json && json.status === 'success') {
+                if (json.proveedores) {
+                    setProveedores(json.proveedores);
+                }
+                if (json.items) {
+                    const dbMapNRec = {};
+                    json.items.forEach(eq => {
+                        if (eq.N_Recipiente) {
+                            dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
+                        }
+                        if (eq.N_Interno) {
+                            dbMapNRec[String(eq.N_Interno).toUpperCase()] = eq; // Fallback para búsqueda manual
+                        }
+                    });
+                    setExtintoresDb(dbMapNRec);
+                }
+            }
+        };
+
         const loadDocs = async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || "/api/extintores";
-                const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: 'get_current_state' }),
-                });
-                const json = await response.json();
-                if (json.status === 'success') {
-                    if (json.proveedores) {
-                        setProveedores(json.proveedores);
-                    }
-                    if (json.items) {
-                        const dbMapNRec = {};
-                        json.items.forEach(eq => {
-                            if (eq.N_Recipiente) {
-                                dbMapNRec[String(eq.N_Recipiente).toUpperCase()] = eq;
-                            }
-                            if (eq.N_Interno) {
-                                dbMapNRec[String(eq.N_Interno).toUpperCase()] = eq; // Fallback para búsqueda manual
-                            }
-                        });
-                        setExtintoresDb(dbMapNRec);
-                    }
-                }
+                await fetchAppStateWithCache(
+                    (cached) => handleData(cached),
+                    (fresh) => handleData(fresh)
+                );
             } catch (error) {
                 console.error("Error cargando BD para el Remito:", error);
             }

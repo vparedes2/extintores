@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ShieldAlert, Wrench, PackageSearch, Loader, Layers } from 'lucide-react';
-import { fetchExtintores } from '../services/api';
+import { fetchExtintores, fetchAppStateWithCache } from '../services/api';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -16,35 +16,29 @@ export default function Dashboard() {
     ]);
 
     useEffect(() => {
+        const handleData = (json) => {
+            if (json && json.status === 'success') {
+                setExtintoresReales(json.items || []);
+                const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0 };
+                setStats([
+                    { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
+                    { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
+                    { label: 'En Reparación', value: st.reparacion, icon: <Wrench size={24} />, color: '#f59e0b' },
+                    { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
+                ]);
+                setLoading(false);
+            }
+        };
+
         const loadDocs = async () => {
             setLoading(true);
             try {
-                // Modified fetchExtintores now acts just as a getter, 
-                // but we also need the stats object. We can either parse the raw fetch here
-                // or use the proxy directly. Let's hit the proxy since we know it returns {stats, items}.
-                const API_URL = import.meta.env.VITE_API_URL || "/api/extintores";
-                const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: 'get_current_state' }),
-                });
-
-                const json = await response.json();
-
-                if (json.status === 'success') {
-                    setExtintoresReales(json.items || []);
-                    const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0 };
-
-                    setStats([
-                        { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
-                        { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
-                        { label: 'En Reparación', value: st.reparacion, icon: <Wrench size={24} />, color: '#f59e0b' },
-                        { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
-                    ]);
-                }
+                await fetchAppStateWithCache(
+                    (cachedJson) => { handleData(cachedJson); }, // Función rápida (Caché local a 0ms)
+                    (freshJson) => { handleData(freshJson); }    // Función de actualización silenciosa de fondo
+                );
             } catch (error) {
                 console.error("Dashboard Stats Fetch Error:", error);
-            } finally {
                 setLoading(false);
             }
         };

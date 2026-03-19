@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader, AlertCircle } from 'lucide-react';
-import { fetchExtintores } from '../services/api';
+import { fetchAppStateWithCache, fetchExtintores } from '../services/api';
 
 export default function Scanner() {
     const [manualCode, setManualCode] = useState('');
@@ -16,12 +16,22 @@ export default function Scanner() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Precargar la base de datos de extintores
+        // Precargar la base de datos de extintores (SWR)
         const loadDocs = async () => {
             setLoadingData(true);
-            const data = await fetchExtintores();
-            setDbData(data || []);
-            setLoadingData(false);
+            try {
+                await fetchAppStateWithCache(
+                    (cached) => { 
+                        if(cached && cached.items) { setDbData(cached.items); setLoadingData(false); }
+                    },
+                    (fresh) => {
+                        if(fresh && fresh.items) { setDbData(fresh.items); setLoadingData(false); }
+                    }
+                );
+            } catch(e) { 
+                console.error(e); 
+                setLoadingData(false); 
+            }
         };
         loadDocs();
     }, []);

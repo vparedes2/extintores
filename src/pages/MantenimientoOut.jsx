@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader, X } from 'lucide-react';
-import { sendToSheet, fetchAppState } from '../services/api';
+import { sendToSheet, fetchAppState, fetchAppStateWithCache } from '../services/api';
 
 export default function MantenimientoOut() {
     const location = useLocation();
@@ -34,11 +34,19 @@ export default function MantenimientoOut() {
             navigate('/scanner');
         }
 
-        const loadProveedores = async () => {
-            const dataState = await fetchAppState();
+        const handleData = (dataState) => {
             if (dataState && dataState.proveedores) {
                 setProveedores(dataState.proveedores);
             }
+        };
+
+        const loadProveedores = async () => {
+            try {
+                await fetchAppStateWithCache(
+                    (cached) => handleData(cached),
+                    (fresh) => handleData(fresh)
+                );
+            } catch(e) { console.error(e); }
         };
         loadProveedores();
 
