@@ -101,7 +101,7 @@ function doPost(e) {
                 const h = String(rawHeader).toLowerCase().trim();
                 const clean = h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
-                if (clean.includes('time') || clean === 'fecha') return 'Timestamp';
+                if (clean.includes('time') || clean.includes('fecha') || clean.includes('marca')) return 'Timestamp';
                 if (clean.includes('interno')) return 'N_Interno';
                 if (clean.includes('recipiente') || clean.includes('fabrica')) return 'N_Recipiente';
                 if (clean.includes('ubicacion') || clean.includes('locacion') || clean.includes('sector')) return 'Ubicacion';
@@ -109,14 +109,14 @@ function doPost(e) {
                 if (clean.includes('vencimientoph') || clean.includes('vtoph') || (clean.includes('vto') && clean.includes('ph'))) return 'Vto_PH';
                 if (clean.includes('estadodecarga') || clean.includes('vtocarga') || clean.includes('vencimientocarga') || (clean.includes('vto') && clean.includes('carga'))) return 'Vto_Carga';
                 if (clean.includes('capacidad') || clean.includes('peso')) return 'Capacidad';
-                if (clean.includes('agente') || clean.includes('tipo')) return 'Agente';
+                if (clean.includes('agente') || clean.includes('tipo') && !clean.includes('movimiento')) return 'Agente';
                 if (clean.includes('placa') || clean.includes('tarjeta') || clean.includes('identif')) return 'Tarjeta_ID';
                 if (clean.includes('manometro')) return 'Manometro';
                 if (clean.includes('palanca') || clean.includes('manija')) return 'Palanca';
                 if (clean.includes('manguera') || clean.includes('boquilla')) return 'Manguera';
                 if (clean.includes('seguro') || clean.includes('precinto')) return 'Precinto';
                 if (clean.includes('soporte')) return 'Soporte';
-                if (clean.includes('tipomovimiento')) return 'Tipo_Movimiento';
+                if (clean.includes('movimiento') || clean.includes('accion')) return 'Tipo_Movimiento';
                 if (clean.includes('proveedor')) return 'Proveedor';
                 if (clean.includes('motivo') || clean.includes('trabajo')) return 'Motivo_Trabajo';
                 if (clean.includes('nuevovto') && clean.includes('carga')) return 'Nuevo_Vto_Carga';
