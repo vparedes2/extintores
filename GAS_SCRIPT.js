@@ -298,6 +298,15 @@ function doPost(e) {
                 }
             });
 
+            const sheetProv = spreadsheet.getSheetByName('PROVEEDORES');
+            let proveedores = [];
+            if (sheetProv) {
+                const pData = sheetProv.getDataRange().getValues();
+                if (pData.length > 1) {
+                    proveedores = pData.slice(1).map(row => String(row[0]).trim()).filter(Boolean);
+                }
+            }
+
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
                 "stats": {
@@ -307,7 +316,8 @@ function doPost(e) {
                     "vencidos": vencidos,
                     "vigentes": vigentes
                 },
-                "items": finalItems
+                "items": finalItems,
+                "proveedores": proveedores
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
@@ -537,18 +547,39 @@ function doPost(e) {
             // 1. Llenar metadatos respetando celdas combinadas y concatenando
             // A7 (combinada B7), C7 (combinada F7), G7 (combinada P7)
 
-            let currentA7 = String(sheetHoja3.getRange("A7").getValue() || "Fecha de Inspección: ");
-            let currentC7 = String(sheetHoja3.getRange("C7").getValue() || "Próxima inspección: ");
-            let currentG7 = String(sheetHoja3.getRange("G7").getValue() || "Inspeccionó: ");
+            // Buscar dinámicamente dónde están los encabezados en la Hoja 3 (A1:O10)
+            const headerRange = sheetHoja3.getRange("A1:O10");
+            const headerValues = headerRange.getValues();
+            
+            let foundFecha = false;
+            let foundInsp = false;
 
-            // Limpiar si ya tenía un valor antes (dividimos por ":" y tomamos la etiqueta original)
-            let baseA7 = currentA7.includes(":") ? currentA7.split(":")[0] + ": " : currentA7 + " ";
-            let baseC7 = currentC7.includes(":") ? currentC7.split(":")[0] + ": " : currentC7 + " ";
-            let baseG7 = currentG7.includes(":") ? currentG7.split(":")[0] + ": " : currentG7 + " ";
+            for (let r = 0; r < headerValues.length; r++) {
+                for (let c = 0; c < headerValues[r].length; c++) {
+                    let cellText = String(headerValues[r][c] || "").toLowerCase();
+                    
+                    if (!foundFecha && cellText.includes("fecha")) {
+                        // Inyectar Fecha actual + Próxima en la misma celda para evitar que se corte o desaparezca
+                        let base = headerValues[r][c].toString().split(":")[0] + ": ";
+                        let combinedDateStr = base + formattedTarget + "   (Próxima: " + formattedNext + ")";
+                        sheetHoja3.getRange(r + 1, c + 1).setValue(combinedDateStr);
+                        foundFecha = true;
+                    } 
+                    else if (!foundInsp && (cellText.includes("inspeccionó") || cellText.includes("inspector") || cellText.includes("realizó"))) {
+                        let base = headerValues[r][c].toString().split(":")[0] + ": ";
+                        sheetHoja3.getRange(r + 1, c + 1).setValue(base + data.inspector);
+                        foundInsp = true;
+                    }
+                }
+            }
 
-            sheetHoja3.getRange("A7").setValue(baseA7 + formattedTarget);
-            sheetHoja3.getRange("C7").setValue(baseC7 + formattedNext);
-            sheetHoja3.getRange("G7").setValue(baseG7 + data.inspector);
+            // Fallback agresivo si el usuario borró las palabras mágicas del Excel
+            if (!foundFecha) {
+                sheetHoja3.getRange("B4").setValue("Fecha: " + formattedTarget + " (Vto: " + formattedNext + ")");
+            }
+            if (!foundInsp) {
+                sheetHoja3.getRange("F4").setValue("Inspector: " + data.inspector);
+            }
 
             // 2. Insertar los datos en posiciones FIJAS Y EXACTAS.
             let dataStartRow = 11;
@@ -619,6 +650,18 @@ function doPost(e) {
                 "pdfBase64": base64Data,
                 "fileName": "Reporte_Extintores_" + targetDateStr + ".pdf"
             })).setMimeType(ContentService.MimeType.JSON);
+        } else if (action === 'add_proveedor') {
+            let sheet = spreadsheet.getSheetByName('PROVEEDORES');
+            if (!sheet) {
+                // Auto-crear la pestaña si el usuario no lo hizo
+                sheet = spreadsheet.insertSheet('PROVEEDORES');
+                sheet.appendRow(["Nombre_Proveedor", "Telefono", "Email"]);
+            }
+            if (!data.proveedor || !String(data.proveedor).trim()) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Nombre inválido" })).setMimeType(ContentService.MimeType.JSON);
+            }
+            sheet.appendRow([String(data.proveedor).trim()]);
+            return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
         }
 
         return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
