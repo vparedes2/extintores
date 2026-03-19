@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader } from 'lucide-react';
+import { sendToSheet } from '../services/api';
 
 export default function MantenimientoOut() {
     const location = useLocation();
@@ -37,13 +38,7 @@ export default function MantenimientoOut() {
         };
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || "https://extintores-api.vercel.app/api/extintores";
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
+            const data = await sendToSheet(payload);
 
             if (data.status === 'success') {
                 setSuccess(true);
