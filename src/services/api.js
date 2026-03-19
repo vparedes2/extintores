@@ -51,24 +51,4 @@ export const fetchExtintores = async () => {
     console.error("Error crítico obteniendo datos:", error);
     return [];
   }
-};                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ action: 'get_current_state' }),
-        });
-
-        const json = await response.json();
-
-        if (json.status === 'success') {
-            // V2: El servidor de Google Apps Script ya calcula y consolida todos los estados
-            // Solo devolvemos la lista limpia que la API proxy nos cachea
-            return json.items || [];
-
-        } else {
-            console.error("Error desde el Sheet:", json.message);
-            return [];
-        }
-    } catch (error) {
-        console.error("Error crítico obteniendo datos:", error);
-        return [];
-    }
 };
