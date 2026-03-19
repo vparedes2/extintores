@@ -14,19 +14,19 @@ export default async function handler(req, res) {
     return;
   }
 
-const SCRIPT_URL =
-  process.env.GAS_URL ||
-  "https://script.google.com/macros/s/AKfycbxM4TYV2_2tzqjGTV6djxK-1eq2dKR60WXUX7jlvFFlsdvz6gGt5VvwQqUQmuOg7AfrGQ/exec";
-  
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).json({
-        status: "error",
-        message: "Method Not Allowed",
-      });
-    }
+    // Ignoramos process.env.GAS_URL momentáneamente porque en Vercel puede haber quedado la URL vieja cargada como variable de entorno,
+    // rompiendo todo el mapeo de columnas y causando fallas en el dashboard y escáner.
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxM4TYV2_2tzqjGTV6djxK-1eq2dKR60WXUX7jlvFFlsdvz6gGt5VvwQqUQmuOg7AfrGQ/exec";
 
-    const bodyData = req.body;
+    try {
+        if (req.method !== "POST") {
+            return res.status(405).json({
+                status: "error",
+                message: "Method Not Allowed",
+            });
+        }
+
+        const bodyData = req.body;
 
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
