@@ -76,17 +76,17 @@ export default function Configuracion() {
                     <h3 style={{ margin: 0 }}>Correos Autorizados ({emails.length})</h3>
                 </div>
 
-                <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', width: '100%', alignItems: 'center' }}>
                     <input 
                         type="email" 
                         placeholder="Ej. seguridad@empresa.com" 
                         value={newEmail} 
                         onChange={e => setNewEmail(e.target.value)}
                         required
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, minWidth: '0' }}
                     />
-                    <button type="submit" className="btn" disabled={saving || !newEmail} style={{ background: '#10b981', color: 'white', padding: '0.75rem' }}>
-                        {saving ? <Loader className="spin" size={20} /> : <Plus size={20} />}
+                    <button type="submit" className="btn" disabled={saving || !newEmail} style={{ width: 'auto', background: '#10b981', color: 'white', padding: '0.75rem 1.5rem', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {saving ? <Loader className="spin" size={20} /> : <Plus size={20} style={{ margin: 0 }} />}
                     </button>
                 </form>
 
