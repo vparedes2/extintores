@@ -655,12 +655,17 @@ function doPost(e) {
             if (!sheet) {
                 // Auto-crear la pestaña si el usuario no lo hizo
                 sheet = spreadsheet.insertSheet('PROVEEDORES');
-                sheet.appendRow(["Nombre_Proveedor", "Telefono", "Email"]);
+                sheet.appendRow(["Nombre_Proveedor", "Telefono", "Email", "Contacto"]);
             }
             if (!data.proveedor || !String(data.proveedor).trim()) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Nombre inválido" })).setMimeType(ContentService.MimeType.JSON);
             }
-            sheet.appendRow([String(data.proveedor).trim()]);
+            sheet.appendRow([
+                String(data.proveedor).trim(),
+                String(data.telefono || "").trim(),
+                String(data.email || "").trim(),
+                String(data.contacto || "").trim()
+            ]);
             return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
         }
 

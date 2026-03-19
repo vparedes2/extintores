@@ -21,6 +21,9 @@ export default function MantenimientoBatchOut() {
     const [proveedores, setProveedores] = useState([]);
     const [showAddProvModal, setShowAddProvModal] = useState(false);
     const [newProvName, setNewProvName] = useState('');
+    const [newProvPhone, setNewProvPhone] = useState('');
+    const [newProvEmail, setNewProvEmail] = useState('');
+    const [newProvContact, setNewProvContact] = useState('');
     const [savingProv, setSavingProv] = useState(false);
 
     const qrRef = useRef(null);
@@ -64,12 +67,21 @@ export default function MantenimientoBatchOut() {
         if (!newProvName.trim()) return;
         setSavingProv(true);
         try {
-            const res = await sendToSheet({ action: "add_proveedor", proveedor: newProvName.trim() });
+            const res = await sendToSheet({ 
+                action: "add_proveedor", 
+                proveedor: newProvName.trim(),
+                telefono: newProvPhone.trim(),
+                email: newProvEmail.trim(),
+                contacto: newProvContact.trim()
+            });
             if (res && res.status === 'success') {
                 setFormData(prev => ({ ...prev, proveedor: newProvName.trim() }));
                 setProveedores(prev => [...prev, newProvName.trim()]);
                 setShowAddProvModal(false);
                 setNewProvName('');
+                setNewProvPhone('');
+                setNewProvEmail('');
+                setNewProvContact('');
             } else {
                 alert("Error guardando proveedor: " + (res?.message || 'Error'));
             }
@@ -477,13 +489,33 @@ export default function MantenimientoBatchOut() {
                                 <X size={24} />
                             </button>
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Nombre de la empresa externa..."
-                            value={newProvName}
-                            onChange={(e) => setNewProvName(e.target.value)}
-                            autoFocus
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <input
+                                type="text"
+                                placeholder="Nombre de la empresa (Obligatorio)..."
+                                value={newProvName}
+                                onChange={(e) => setNewProvName(e.target.value)}
+                                autoFocus
+                            />
+                            <input
+                                type="text"
+                                placeholder="Teléfono de contacto (Opcional)..."
+                                value={newProvPhone}
+                                onChange={(e) => setNewProvPhone(e.target.value)}
+                            />
+                            <input
+                                type="email"
+                                placeholder="Correo Institucional (Opcional)..."
+                                value={newProvEmail}
+                                onChange={(e) => setNewProvEmail(e.target.value)}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Nombre Persona de Contacto (Opcional)..."
+                                value={newProvContact}
+                                onChange={(e) => setNewProvContact(e.target.value)}
+                            />
+                        </div>
                         <button className="btn-primary" onClick={handleSaveNewProvider} disabled={savingProv || !newProvName.trim()} style={{ width: '100%', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
                             {savingProv ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : 'Guardar Proveedor Oficial'}
                         </button>
