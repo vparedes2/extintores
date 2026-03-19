@@ -582,7 +582,7 @@ function doPost(e) {
             }
 
             // 2. Insertar los datos en posiciones FIJAS Y EXACTAS.
-            let dataStartRow = 11;
+            let dataStartRow = 9;
             let lastRow = sheetHoja3.getLastRow();
             if (lastRow >= dataStartRow) {
                 sheetHoja3.getRange(dataStartRow, 1, lastRow - (dataStartRow - 1), sheetHoja3.getLastColumn()).clearContent();
