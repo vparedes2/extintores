@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
     // Ignoramos process.env.GAS_URL momentáneamente porque en Vercel puede haber quedado la URL vieja cargada como variable de entorno,
     // rompiendo todo el mapeo de columnas y causando fallas en el dashboard y escáner.
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3_i4kSO1sUGjNX3CkmsRqxRGgh9IrRtumK-xxsCYFj3RUDb84QvIz1bndcvRyo77Xyg/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyH7CryeeYeR7PROhEqXt-7g5dKxArj97dMALJTA4Y5gt7EhcqL5QNBz8wmFwxL0osDIA/exec";
 
     try {
         if (req.method !== "POST") {
