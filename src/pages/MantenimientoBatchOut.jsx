@@ -160,10 +160,11 @@ export default function MantenimientoBatchOut() {
             // Detenemos cámara si estaba activa
             await stopScanner();
 
-            // 1. Enviar salidas individuales en paralelo
+            // 1. Enviar salidas individuales de forma SECUENCIAL para evitar colapsar Google Apps Script
             const hoy = new Date().toISOString().split('T')[0];
-            const pmises = scannedItems.map(item =>
-                sendToSheet({
+            
+            for (const item of scannedItems) {
+                await sendToSheet({
                     action: 'mto_out',
                     extintorId: item.nInterno || item.id, // Backend strictly requires N_Interno
                     fecha: hoy,
@@ -172,10 +173,8 @@ export default function MantenimientoBatchOut() {
                     observaciones: 'Despacho automático por lote',
                     remito: formData.remito,
                     responsable: formData.responsable
-                })
-            );
-
-            await Promise.all(pmises);
+                });
+            }
 
             // 2. Generar el Remito Consolidado
             // Cruzamos el ID escaneado con la base de datos descargada para inyectar Capacidad y Agente reales.
@@ -184,8 +183,8 @@ export default function MantenimientoBatchOut() {
                 const dbInfo = extintoresDb[idUppercase] || {};
 
                 return {
-                    N_Interno: item.id,
-                    N_Recipiente: dbInfo.N_Recipiente || '-',
+                    N_Interno: item.nInterno || item.id,
+                    N_Recipiente: dbInfo.N_Recipiente || dbInfo.N_Interno || '-',
                     Capacidad: dbInfo.Capacidad || '',
                     Agente: dbInfo.Agente || 'S/D',
                     Vto_PH: dbInfo.Vto_PH || '',

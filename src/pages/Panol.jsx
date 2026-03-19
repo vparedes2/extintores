@@ -32,7 +32,14 @@ export default function Panol() {
                         ubicacion: ext.Ubicacion,
                         estado: ext.Estado_Disp,
                         tipo: ext.Agente,
-                        capacidad: ext.Capacidad
+                        capacidad: ext.Capacidad,
+                        // Copias exactas para el backend GAS (export_remito)
+                        N_Interno: ext.N_Interno,
+                        N_Recipiente: ext.N_Recipiente,
+                        Capacidad: ext.Capacidad,
+                        Agente: ext.Agente,
+                        Vto_PH: ext.Vto_PH,
+                        Vto_Carga: ext.Vto_Carga
                     }));
 
                     setExtintoresPañol(mapped);
