@@ -26,7 +26,7 @@ function doPost(e) {
         else if (action === 'baja') sheetName = 'BAJA';
         else if (action === 'checklist') sheetName = 'CHECKLIST';
         else if (action === 'mto_out' || action === 'mto_in') sheetName = 'MANTENIMIENTO';
-        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor') sheetName = null;
+        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email') sheetName = null;
         else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
         let sheet;
@@ -307,6 +307,15 @@ function doPost(e) {
                 }
             }
 
+            const sheetEmails = spreadsheet.getSheetByName('EMAILS_ALERTA');
+            let correos = [];
+            if (sheetEmails) {
+                const eData = sheetEmails.getDataRange().getValues();
+                if (eData.length > 1) {
+                    correos = eData.slice(1).map(row => String(row[0]).trim()).filter(Boolean);
+                }
+            }
+
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
                 "stats": {
@@ -317,7 +326,8 @@ function doPost(e) {
                     "vigentes": vigentes
                 },
                 "items": finalItems,
-                "proveedores": proveedores
+                "proveedores": proveedores,
+                "correos": correos
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
@@ -669,6 +679,39 @@ function doPost(e) {
                 String(data.contacto || "").trim()
             ]);
             return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
+
+        } else if (action === 'add_email') {
+            let sheet = spreadsheet.getSheetByName('EMAILS_ALERTA');
+            if (!sheet) {
+                sheet = spreadsheet.insertSheet('EMAILS_ALERTA');
+                sheet.appendRow(["Email"]);
+                sheet.getRange("A1").setFontWeight("bold").setBackground("#d9d9d9");
+            }
+            if (!data.email || !String(data.email).trim() || !String(data.email).includes('@')) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Email inválido" })).setMimeType(ContentService.MimeType.JSON);
+            }
+            sheet.appendRow([String(data.email).trim()]);
+            return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
+
+        } else if (action === 'del_email') {
+            let sheet = spreadsheet.getSheetByName('EMAILS_ALERTA');
+            if (!sheet) return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
+            
+            const eData = sheet.getDataRange().getValues();
+            const target = String(data.email).trim().toLowerCase();
+            let rowToDelete = -1;
+            
+            for (let i = 1; i < eData.length; i++) {
+                if (String(eData[i][0]).trim().toLowerCase() === target) {
+                    rowToDelete = i + 1; // 1-index based for Apps Script
+                    break;
+                }
+            }
+            
+            if (rowToDelete > -1) {
+                sheet.deleteRow(rowToDelete);
+            }
+            return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
         }
 
         return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
@@ -720,6 +763,238 @@ function doOptions(e) {
         .setHeader("Access-Control-Allow-Origin", "*")
         .setHeader("Access-Control-Allow-Methods", "POST, GET");
 }
+
+// ==========================================
+// CRONJOB: ALERTA DE VENCIMIENTOS (DIARIO)
+// ==========================================
+function checkVencimientosYEnviarCorreo() {
+    try {
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        
+        // 1. Obtener lista de correos
+        const sheetEmails = spreadsheet.getSheetByName('EMAILS_ALERTA');
+        if (!sheetEmails) {
+            Logger.log("No existe pestaña EMAILS_ALERTA. No se enviarán correos.");
+            return;
+        }
+        
+        const eData = sheetEmails.getDataRange().getValues();
+        const emailsArr = eData.slice(1).map(row => String(row[0]).trim()).filter(e => e.includes('@'));
+        
+        if (emailsArr.length === 0) {
+            Logger.log("Lista de correos vacía. Cancelando envío de Alertas.");
+            return;
+        }
+
+        // 2. Extraer estado de todo el inventario (Lógica local simplificada)
+        const normalizeKey = (rawHeader) => {
+            const h = String(rawHeader).toLowerCase().trim();
+            const clean = h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+            if (clean.includes('time') || clean.includes('fecha') || clean.includes('marca')) return 'Timestamp';
+            if (clean.includes('interno')) return 'N_Interno';
+            if (clean.includes('recipiente') || clean.includes('fabrica')) return 'N_Recipiente';
+            if (clean.includes('ubicacion') || clean.includes('locacion') || clean.includes('sector')) return 'Ubicacion';
+            if (clean.includes('estado') && clean.includes('disp')) return 'Estado_Disp';
+            if (clean.includes('vencimientoph') || clean.includes('vtoph') || (clean.includes('vto') && clean.includes('ph'))) return 'Vto_PH';
+            if (clean.includes('estadodecarga') || clean.includes('vtocarga') || clean.includes('vencimientocarga') || (clean.includes('vto') && clean.includes('carga'))) return 'Vto_Carga';
+            if (clean.includes('movimiento') || clean.includes('accion')) return 'Tipo_Movimiento';
+            if (clean.includes('destino')) return 'Destino';
+            return rawHeader;
+        };
+
+        const getAllDataFromSheet = (sheetName) => {
+            const tempSheet = spreadsheet.getSheetByName(sheetName);
+            if (!tempSheet) return [];
+            const values = tempSheet.getDataRange().getValues();
+            if (values.length <= 1) return [];
+            const cleanHeaders = values[0].map(normalizeKey);
+            return values.slice(1).map(row => {
+                let obj = {};
+                cleanHeaders.forEach((key, index) => { obj[key] = row[index]; });
+                if (!obj.hasOwnProperty('N_Interno')) obj.N_Interno = '';
+                if (!obj.hasOwnProperty('N_Recipiente')) obj.N_Recipiente = '';
+                return obj;
+            });
+        };
+
+        const safeParseDate = (dateVal) => {
+            if (!dateVal) return new Date(0);
+            if (Object.prototype.toString.call(dateVal) === '[object Date]') {
+                return isNaN(dateVal.getTime()) ? new Date(0) : dateVal;
+            }
+            const str = String(dateVal).trim();
+            const latamMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+            if (latamMatch) {
+                return new Date(parseInt(latamMatch[3], 10), parseInt(latamMatch[2], 10) - 1, parseInt(latamMatch[1], 10));
+            }
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? new Date(0) : d;
+        };
+
+        const dataAlta = getAllDataFromSheet('ALTA');
+        const dataBaja = getAllDataFromSheet('BAJA');
+        const dataChecklist = getAllDataFromSheet('CHECKLIST');
+        const dataManto = getAllDataFromSheet('MANTENIMIENTO');
+
+        const equipos = new Map();
+
+        dataAlta.forEach(a => {
+            const id = String(a.N_Interno || a.N_Recipiente).trim();
+            equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
+        });
+
+        dataChecklist.forEach(c => {
+            const id = String(c.N_Interno || c.N_Recipiente).trim();
+            const ts = safeParseDate(c.Timestamp);
+            if (equipos.has(id)) {
+                let eq = equipos.get(id);
+                if (ts > eq.Ultimo_Movimiento) {
+                    eq.Estado_Disp = c.Estado_Disp;
+                    eq.Ubicacion = c.Ubicacion;
+                    eq.Vto_Carga = c.Vto_Carga;
+                    eq.Ultimo_Movimiento = ts;
+                    equipos.set(id, eq);
+                }
+            }
+        });
+
+        dataManto.forEach(m => {
+            const id = String(m.N_Interno || m.N_Recipiente).trim();
+            const ts = safeParseDate(m.Timestamp);
+            if (equipos.has(id)) {
+                let eq = equipos.get(id);
+                if (ts >= eq.Ultimo_Movimiento) {
+                    const tipo = String(m.Tipo_Movimiento).toUpperCase();
+                    if (tipo === 'SALIDA') {
+                        eq.Estado_Disp = 'En reparación';
+                    } else if (tipo === 'INGRESO') {
+                        eq.Estado_Disp = 'Disponible en Pañol';
+                        if (m.Nuevo_Vto_Carga) eq.Vto_Carga = m.Nuevo_Vto_Carga;
+                        if (m.Nuevo_Vto_PH) eq.Vto_PH = m.Nuevo_Vto_PH;
+                    }
+                    eq.Ultimo_Movimiento = ts;
+                    equipos.set(id, eq);
+                }
+            }
+        });
+
+        dataBaja.forEach(b => {
+            const id = String(b.N_Interno || b.N_Recipiente).trim();
+            const ts = safeParseDate(b.Timestamp);
+            if (equipos.has(id)) {
+                let eq = equipos.get(id);
+                if (ts >= eq.Ultimo_Movimiento) {
+                    eq.Estado_Disp = `Baja: ${b.Destino}`;
+                    eq.Ultimo_Movimiento = ts;
+                    equipos.set(id, eq);
+                }
+            }
+        });
+
+        const finalItems = Array.from(equipos.values());
+
+        // 3. Evaluar próximos a vencer (30 días o menos)
+        const now = new Date();
+        const future30 = new Date();
+        future30.setDate(now.getDate() + 30);
+
+        let alertas = [];
+
+        finalItems.forEach(eq => {
+            const estado = String(eq.Estado_Disp || "").toLowerCase();
+            
+            // Ignorar los dados de baja o en reparación activa
+            if (estado.includes('baja') || estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) return;
+
+            // Procesar vencimiento Carga (YYYY-MM)
+            let vCargaStr = String(eq.Vto_Carga || "").trim();
+            if (vCargaStr && vCargaStr.includes('-')) {
+                const parts = vCargaStr.split('-');
+                if(parts.length >= 2) {
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    const vtoObj = new Date(y, m - 1, 1); // Analizamos comienzo de ese mes en bruto
+                    
+                    if (future30 >= vtoObj || now >= vtoObj) {
+                        alertas.push({
+                            id: eq.N_Interno || eq.N_Recipiente,
+                            ubicacion: eq.Ubicacion || "S/D",
+                            vto: vCargaStr,
+                            tipo: "Vto. Carga"
+                        });
+                    }
+                }
+            }
+
+            // Procesar vencimiento PH (Anual YYYY)
+            let vPHStr = String(eq.Vto_PH || "").trim();
+            if (vPHStr.length === 4) {
+                const phYear = parseInt(vPHStr, 10);
+                // Si el año próximo es el de vencimiento y estamos en diciembre, 
+                // o si estamos transitando el año de vencimiento
+                if (now.getFullYear() >= phYear - 1 && now.getMonth() >= 11) {
+                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
+                    }
+                } else if(now.getFullYear() >= phYear) {
+                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
+                    }
+                }
+            }
+        });
+
+        // 4. Si hay alertas, enviar correo HTML nativo
+        if (alertas.length > 0) {
+            let correosCSV = emailsArr.join(',');
+            let asunto = `🚨 ALERTA: ${alertas.length} Extintores por vencer (30 días)`;
+            
+            let cuerpoHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                <h2 style="color: #b91c1c; margin-top: 0;">Notificación Automática de Vencimientos</h2>
+                <p style="color: #374151;">El sistema de Gestión ha detectado que los siguientes extintores están <strong>próximos a vencer (≤ 30 días) o ya vencieron</strong>. Se requiere acción logística preventiva:</p>
+                <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; border-color: #d1d5db;">
+                    <tr style="background-color: #f3f4f6; color: #1f2937;">
+                        <th>Cod. Interno</th>
+                        <th>Ubicación</th>
+                        <th>Motivo</th>
+                        <th>Vencimiento</th>
+                    </tr>
+            `;
+
+            alertas.forEach(al => {
+                cuerpoHtml += `
+                    <tr>
+                        <td align="center"><strong>${al.id}</strong></td>
+                        <td align="center"><small>${al.ubicacion}</small></td>
+                        <td align="center" style="color: #d97706; font-weight: bold;"><small>${al.tipo}</small></td>
+                        <td align="center"><small>${al.vto}</small></td>
+                    </tr>
+                `;
+            });
+
+            cuerpoHtml += `
+                </table>
+                <br>
+                <p style="color: #6b7280; font-size: 0.8rem;"><em>Este correo se generó automáticamente. Por favor no responder a esta dirección generadora.</em></p>
+            </div>
+            `;
+
+            MailApp.sendEmail({
+                to: correosCSV,
+                subject: asunto,
+                htmlBody: cuerpoHtml
+            });
+            Logger.log("Correos enviados exitosamente por CronJob.");
+        } else {
+            Logger.log("Ningún equipo vence en <= 30 días. Monitor dormido.");
+        }
+
+    } catch (e) {
+        Logger.log("Error CRONJOB: " + e.toString());
+    }
+}
+
 
 // ==========================================
 // FUNCIÓN DE CONFIGURACIÓN DE PERMISOS

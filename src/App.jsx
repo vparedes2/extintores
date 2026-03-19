@@ -1,9 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
-import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText, Truck } from 'lucide-react';
+import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText, Truck, Settings } from 'lucide-react';
 import './index.css';
 
 import Dashboard from './pages/Dashboard';
+import Configuracion from './pages/Configuracion';
 import Scanner from './pages/Scanner';
 import AltaForm from './pages/AltaForm';
 import BajaForm from './pages/BajaForm';
@@ -18,9 +19,14 @@ function App() {
   return (
     <BrowserRouter>
       <header className="nav-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ShieldAlert color="var(--primary)" size={28} />
-          <h1 style={{ margin: 0, fontSize: '1.25rem' }}>FireManager (By ParedesVictor)</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
+            <ShieldAlert color="var(--primary)" size={28} />
+            <h1 style={{ margin: 0, fontSize: '1.25rem' }}>FireManager</h1>
+          </Link>
+          <Link to="/configuracion" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Configuración de Correos">
+            <Settings size={28} />
+          </Link>
         </div>
       </header>
 
@@ -36,6 +42,7 @@ function App() {
           <Route path="/mto-out" element={<MantenimientoOut />} />
           <Route path="/mto-in" element={<MantenimientoIn />} />
           <Route path="/mto-batch" element={<MantenimientoBatchOut />} />
+          <Route path="/configuracion" element={<Configuracion />} />
         </Routes>
       </main>
 
