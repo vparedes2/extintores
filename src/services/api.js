@@ -78,7 +78,7 @@ export const fetchAppState = async () => {
 export const fetchAppStateWithCache = async (onCached, onFresh) => {
   if (!API_URL) return;
 
-  const cacheKey = "extintores_swr_cache";
+  const cacheKey = "extintores_swr_cache_v2"; // v2: fuerza re-fetch en todos los dispositivos
   const cachedData = localStorage.getItem(cacheKey);
   
   // 1. Instantaneous Local Hydration

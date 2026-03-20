@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Search, Download, ShieldAlert, Plus, X } from 'lucide-react';
-import { fetchAppState, sendToSheet } from '../services/api';
+import { fetchAppState, fetchAppStateWithCache, sendToSheet } from '../services/api';
 
 export default function Panol() {
     const [extintoresPañol, setExtintoresPañol] = useState([]);
