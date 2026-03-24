@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, Send } from 'lucide-react';
 import { sendToSheet, fetchExtintores } from '../services/api';
@@ -7,6 +7,7 @@ export default function BajaForm() {
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
+    const inputRef = useRef(null);
 
     // Si venimos del escáner, esto tendrá el N_Recipiente escaneado
     const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Recipiente || '';
@@ -19,6 +20,12 @@ export default function BajaForm() {
         proveedor: 'N/A', // Legacy field no longer used visually
         remitoSalida: 'N/A' // Legacy field no longer used visually
     });
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
+
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -74,7 +81,7 @@ export default function BajaForm() {
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica o Nº Interno)</label>
-                    <input autoFocus required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
+                    <input ref={inputRef} required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
                 </div>
 
                 <div>

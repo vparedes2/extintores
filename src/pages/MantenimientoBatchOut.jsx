@@ -26,7 +26,14 @@ export default function MantenimientoBatchOut() {
     const [newProvContact, setNewProvContact] = useState('');
     const [savingProv, setSavingProv] = useState(false);
 
+    const manualInputRef = useRef(null);
     const qrRef = useRef(null);
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(manualInputRef.current) manualInputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
+
 
     // Cargar base de datos al iniciar para cruzar datos en el PDF
     useEffect(() => {
@@ -329,7 +336,8 @@ export default function MantenimientoBatchOut() {
             }} className="glass-card" style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>O añadir manualmente:</h3>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <input
+                     <input
+                        ref={manualInputRef}
                         type="text"
                         autoFocus
                         placeholder="Ej: 794074 (Fábrica) o 6 (Interno)"

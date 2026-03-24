@@ -7,6 +7,7 @@ export default function Configuracion() {
     const [newEmail, setNewEmail] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [alertLoading, setAlertLoading] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -113,6 +114,26 @@ export default function Configuracion() {
                         ))}
                     </ul>
                 )}
+
+                <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                    <h4 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <AlertCircle size={18} color="#f59e0b" />
+                        Acciones de Diagnóstico
+                    </h4>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                        Usa este botón para forzar el envío de mails en este momento. 
+                        <b> Nota:</b> Para que los mails lleguen solos cada día, debés configurar un "Activador" (Trigger) en Google Apps Script apuntando a la función <code>checkVencimientosYEnviarCorreo</code>.
+                    </p>
+                    <button 
+                        onClick={handleTestAlerts} 
+                        disabled={alertLoading} 
+                        className="btn btn-secondary" 
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid #f59e0b', color: '#f59e0b' }}
+                    >
+                        {alertLoading ? <Loader className="spin" size={20} /> : <Mail size={20} />}
+                        {alertLoading ? 'Procesando alertas...' : 'Probar Envío de Alertas Ahora'}
+                    </button>
+                </div>
             </div>
         </div>
     );

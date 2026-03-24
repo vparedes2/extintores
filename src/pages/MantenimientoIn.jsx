@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Loader } from 'lucide-react';
 import { sendToSheet } from '../services/api';
@@ -9,6 +9,12 @@ export default function MantenimientoIn() {
     const [extintor, setExtintor] = useState(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
 
     const [formData, setFormData] = useState({
         fecha: new Date().toISOString().split('T')[0],
@@ -99,7 +105,7 @@ export default function MantenimientoIn() {
 
                 <div className="form-group">
                     <label>Fecha de Recepción</label>
-                    <input autoFocus type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
+                    <input ref={inputRef} type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
                 </div>
 
                 <div className="form-group">

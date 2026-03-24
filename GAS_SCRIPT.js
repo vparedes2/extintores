@@ -26,7 +26,7 @@ function doPost(e) {
         else if (action === 'baja') sheetName = 'BAJA';
         else if (action === 'checklist') sheetName = 'CHECKLIST';
         else if (action === 'mto_out' || action === 'mto_in') sheetName = 'MANTENIMIENTO';
-        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email') sheetName = null;
+        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email' || action === 'test_alerts') sheetName = null;
         else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
         let sheet;
@@ -502,49 +502,24 @@ function doPost(e) {
                 let cellVal = row[fechaIndex];
                 if (!cellVal) return false;
 
-                // Si la celda es un objeto Date nativo de Google o Javascript
-                if (cellVal instanceof Date) {
-                    let cellDateStr = Utilities.formatDate(cellVal, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
-                    return cellDateStr === targetDateStr;
-                }
-
-                const strVal = String(cellVal).trim();
-
-                // Convertir cualquier formato extraño separador (/ o .) a guiones para estandarizar visualmente
-                const strNorm = strVal.replace(/[\/\.]/g, "-");
-
-                // Soporte para variaciones de YYYY-MM-DD vs DD-MM-YYYY
-                if (strNorm === targetDateStr || strNorm === formattedTarget || strNorm.includes(targetDateStr) || strNorm.includes(formattedTarget.replace(/\//g, '-'))) {
-                    return true;
-                }
-
-                // Desensamblaje profundo en caso de que Google Sheets lo haya volcado como 'D-M-YYYY'
-                // targetDateStr es YYYY-MM-DD
-                const partsTarget = targetDateStr.split('-');
-                const pT_Y = partsTarget[0];
-                const pT_M = parseInt(partsTarget[1], 10);
-                const pT_D = parseInt(partsTarget[2], 10);
-
-                if (strNorm.includes('-')) {
-                    const pS = strNorm.split('-');
-                    if (pS.length === 3) {
-                        // Si la primera parte es 4 digitos es YYYY-XX-XX
-                        let sY, sM, sD;
-                        if (pS[0].length === 4) {
-                            sY = pS[0];
-                            sM = parseInt(pS[1], 10);
-                            sD = parseInt(pS[2], 10);
-                        } else if (pS[2].length === 4) { // Si la ultima es 4 digitos es DD-MM-YYYY o MM-DD-YYYY (asumimos DD-MM usual en LATAM)
-                            sD = parseInt(pS[0], 10);
-                            sM = parseInt(pS[1], 10);
-                            sY = pS[2];
-                        }
-
-                        if (sY === pT_Y && sM === pT_M && sD === pT_D) return true;
+                // Utility to compare two dates robustly as YYYY-MM-DD
+                const getComparableDate = (val) => {
+                    if (val instanceof Date) {
+                        return Utilities.formatDate(val, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
                     }
-                }
+                    const s = String(val).trim().replace(/[\/\.]/g, "-");
+                    // Case YYYY-MM-DD
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+                    // Case DD-MM-YYYY
+                    const parts = s.split("-");
+                    if (parts.length === 3) {
+                        if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    }
+                    return s;
+                };
 
-                return false;
+                return getComparableDate(cellVal) === targetDateStr;
             });
 
             if (rowsToExport.length === 0) {
@@ -635,7 +610,12 @@ function doPost(e) {
 
             if (finalOutput.length > 0) {
                 // Pegar EXACTAMENTE los 16 elementos para no desalinear
-                sheetHoja3.getRange(dataStartRow, 1, finalOutput.length, 16).setValues(finalOutput);
+                const range = sheetHoja3.getRange(dataStartRow, 1, finalOutput.length, 16);
+                range.setValues(finalOutput);
+                
+                // MEJORA: Aplicar bordes automáticamente para que no se vea "cortado"
+                range.setBorder(true, true, true, true, true, true, "black", SpreadsheetApp.BorderStyle.SOLID);
+                range.setFontSize(8).setHorizontalAlignment("center");
             }
 
             SpreadsheetApp.flush(); // Forzar guardado
@@ -712,6 +692,9 @@ function doPost(e) {
                 sheet.deleteRow(rowToDelete);
             }
             return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
+        } else if (action === 'test_alerts') {
+            checkVencimientosYEnviarCorreo();
+            return ContentService.createTextOutput(JSON.stringify({ "status": "success", "message": "Proceso de alertas ejecutado manualmente." })).setMimeType(ContentService.MimeType.JSON);
         }
 
         return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);

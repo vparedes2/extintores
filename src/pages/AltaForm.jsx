@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Save, MapPin } from 'lucide-react';
 import { sendToSheet } from '../services/api';
@@ -7,6 +7,7 @@ export default function AltaForm() {
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
+    const inputRef = useRef(null);
 
     const initialExtintorId = location.state?.extintorId || '';
 
@@ -15,6 +16,12 @@ export default function AltaForm() {
         vtoPH: '', vtoCarga: '', capacidad: '', agente: '',
         remitoProveedor: ''
     });
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
+
 
 
     const detectStatus = (ubicacion) => {
@@ -81,7 +88,7 @@ export default function AltaForm() {
             <form onSubmit={handleSubmit} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Interno / Identificador QR</label>
-                    <input autoFocus required name="nInterno" value={formData.nInterno} onChange={handleChange} placeholder="Ej. EXT-050" />
+                    <input ref={inputRef} required name="nInterno" value={formData.nInterno} onChange={handleChange} placeholder="Ej. EXT-050" />
                 </div>
 
                 <div>

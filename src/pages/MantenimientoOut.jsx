@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader, X } from 'lucide-react';
+import { ArrowLeft, Save, Loader, X, Mail } from 'lucide-react';
 import { sendToSheet, fetchAppState, fetchAppStateWithCache } from '../services/api';
 
 export default function MantenimientoOut() {
@@ -9,6 +9,12 @@ export default function MantenimientoOut() {
     const [extintor, setExtintor] = useState(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
 
     const [formData, setFormData] = useState({
         fecha: new Date().toISOString().split('T')[0],
@@ -143,7 +149,7 @@ export default function MantenimientoOut() {
 
                 <div className="form-group">
                     <label>Fecha de Salida</label>
-                    <input autoFocus type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
+                    <input ref={inputRef} type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
                 </div>
 
                 <div className="form-group">

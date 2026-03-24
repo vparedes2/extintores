@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader, AlertCircle } from 'lucide-react';
@@ -14,6 +14,12 @@ export default function Scanner() {
     const [foundExtintor, setFoundExtintor] = useState(null);
 
     const navigate = useNavigate();
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
+        return () => clearTimeout(t);
+    }, []);
 
     useEffect(() => {
         // Precargar la base de datos de extintores (SWR)
@@ -129,8 +135,8 @@ export default function Scanner() {
                         <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Ingreso Manual</h3>
                         <form onSubmit={handleManualSearch} style={{ display: 'flex', gap: '0.5rem' }}>
                             <input
+                                ref={inputRef}
                                 type="text"
-                                autoFocus
                                 placeholder="Ej. EXT-012"
                                 value={manualCode}
                                 onChange={(e) => setManualCode(e.target.value)}

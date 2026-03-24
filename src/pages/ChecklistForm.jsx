@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckSquare, MapPin } from 'lucide-react';
-import { sendToSheet, fetchExtintores } from '../services/api';
+import { sendToSheet, fetchExtintores, fetchAppStateWithCache } from '../services/api';
 
 export default function ChecklistForm() {
     const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
+    const inputRef = useRef(null);
 
     // Si venimos del escáner, se envía extintorId que es el N_Recipiente, o extintorData.N_Recipiente
     const initialExtintorId = location.state?.extintorId || location.state?.extintorData?.N_Recipiente || '';
@@ -60,11 +61,19 @@ export default function ChecklistForm() {
         senalizacionAcceso: 'B',
     });
 
+    // --- MEJORA: Foco automático robusto ---
+    useEffect(() => {
+        const t = setTimeout(() => {
+            if (inputRef.current) inputRef.current.focus();
+        }, 100);
+        return () => clearTimeout(t);
+    }, []);
+
     // --- MEJORA: Autocompletado automático al ingresar ID ---
-    React.useEffect(() => {
+    useEffect(() => {
         const lookupDetails = async () => {
             const id = String(formData.extintorId || '').trim().toLowerCase();
-            if (id.length < 2) return; // Esperar a que ingresen algo razonable
+            if (id.length < 1) return; // Ahora se activa desde el primer caracter
 
             try {
                 // Usamos fetchAppStateWithCache para traer la base de datos (con SWR)
@@ -214,7 +223,14 @@ export default function ChecklistForm() {
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador (Nº Fábrica o Nº Interno)</label>
-                            <input autoFocus required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
+                            <input 
+                                ref={inputRef}
+                                required 
+                                name="extintorId" 
+                                value={formData.extintorId} 
+                                onChange={handleChange} 
+                                placeholder="Ej. 794074 o 6" 
+                            />
                         </div>
                         <div style={{ flex: 1, display: 'none' }}>
                             {/* Oculto, ya no se usa N_Recipiente manual porque el principal ahora es el fábrica */}
