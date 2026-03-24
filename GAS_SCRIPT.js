@@ -490,37 +490,30 @@ function doPost(e) {
             if (clData.length <= 1) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No hay checklists registrados" })).setMimeType(ContentService.MimeType.JSON);
             }
-
-            const clHeaders = clData[0];
+            const clHeaders = clData[0].map(h => String(h).toLowerCase().trim());
             const clRows = clData.slice(1);
 
-            // LA FECHA SIEMPRE ES EL ÍNDICE 5 en la inserción de checklist
-            // [timestamp (0), id (1), nRec(2), ubic(3), estDisp(4), fecha (5), ...]
-            let fechaIndex = 5;
+            // Dinamizar búsqueda de columna "fecha"
+            let fechaIndex = clHeaders.findIndex(h => h.includes("fecha"));
+            if (fechaIndex === -1) fechaIndex = 5; // Fallback al original
 
-            const rowsToExport = clRows.filter(row => {
-                let cellVal = row[fechaIndex];
-                if (!cellVal) return false;
+            const getComparableDate = (val) => {
+                if (!val) return "";
+                if (val instanceof Date) {
+                    return Utilities.formatDate(val, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
+                }
+                const s = String(val).trim();
+                // Regex para capturar YYYY-MM-DD o DD-MM-YYYY ignorando lo que venga después (horas, etc)
+                const match = s.match(/^(\d{1,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,4})/);
+                if (match) {
+                    let p1 = match[1], p2 = match[2], p3 = match[3];
+                    if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+                    if (p3.length === 4) return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+                }
+                return s;
+            };
 
-                // Utility to compare two dates robustly as YYYY-MM-DD
-                const getComparableDate = (val) => {
-                    if (val instanceof Date) {
-                        return Utilities.formatDate(val, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd");
-                    }
-                    const s = String(val).trim().replace(/[\/\.]/g, "-");
-                    // Case YYYY-MM-DD
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-                    // Case DD-MM-YYYY
-                    const parts = s.split("-");
-                    if (parts.length === 3) {
-                        if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                        if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-                    }
-                    return s;
-                };
-
-                return getComparableDate(cellVal) === targetDateStr;
-            });
+            const rowsToExport = clRows.filter(row => getComparableDate(row[fechaIndex]) === targetDateStr);
 
             if (rowsToExport.length === 0) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "No se encontraron checklists guardados exactamente bajo la fecha " + formattedTarget + ". Verifica en la tabla CHECKLIST cómo quedó escrita." })).setMimeType(ContentService.MimeType.JSON);
@@ -616,6 +609,8 @@ function doPost(e) {
                 // MEJORA: Aplicar bordes automáticamente para que no se vea "cortado"
                 range.setBorder(true, true, true, true, true, true, "black", SpreadsheetApp.BorderStyle.SOLID);
                 range.setFontSize(8).setHorizontalAlignment("center");
+                // Asegurar color automático y font family
+                range.setFontFamily("Arial").setFontColor("black");
             }
 
             SpreadsheetApp.flush(); // Forzar guardado
