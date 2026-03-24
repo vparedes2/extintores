@@ -62,6 +62,23 @@ export default function Configuracion() {
         }
     };
 
+    const handleTestAlerts = async () => {
+        setAlertLoading(true);
+        try {
+            const res = await sendToSheet({ action: 'test_alerts' });
+            if (res && res.status === 'success') {
+                alert('✅ Proceso de alertas ejecutado. Revisa tu bandeja de entrada (y SPAM) si hay equipos por vencer.');
+            } else {
+                alert('Error al probar alertas: ' + (res?.message || 'Desconocido'));
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error de red al probar alertas.');
+        } finally {
+            setAlertLoading(false);
+        }
+    };
+
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <header style={{ marginBottom: '2rem' }}>
