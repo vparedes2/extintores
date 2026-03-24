@@ -143,7 +143,7 @@ export default function MantenimientoOut() {
 
                 <div className="form-group">
                     <label>Fecha de Salida</label>
-                    <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
+                    <input autoFocus type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
                 </div>
 
                 <div className="form-group">

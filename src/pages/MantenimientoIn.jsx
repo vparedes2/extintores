@@ -99,7 +99,7 @@ export default function MantenimientoIn() {
 
                 <div className="form-group">
                     <label>Fecha de Recepción</label>
-                    <input type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
+                    <input autoFocus type="date" required value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} />
                 </div>
 
                 <div className="form-group">

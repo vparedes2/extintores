@@ -130,6 +130,7 @@ export default function Scanner() {
                         <form onSubmit={handleManualSearch} style={{ display: 'flex', gap: '0.5rem' }}>
                             <input
                                 type="text"
+                                autoFocus
                                 placeholder="Ej. EXT-012"
                                 value={manualCode}
                                 onChange={(e) => setManualCode(e.target.value)}

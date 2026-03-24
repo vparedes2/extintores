@@ -81,12 +81,23 @@ export default function AltaForm() {
             <form onSubmit={handleSubmit} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Interno / Identificador QR</label>
-                    <input required name="nInterno" value={formData.nInterno} onChange={handleChange} placeholder="Ej. EXT-050" />
+                    <input autoFocus required name="nInterno" value={formData.nInterno} onChange={handleChange} placeholder="Ej. EXT-050" />
                 </div>
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº de Recipiente (Fábrica)</label>
                     <input name="nRecipiente" value={formData.nRecipiente} onChange={handleChange} placeholder="Ej. 129384AB" />
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento PH (AÑO - YYYY)</label>
+                        <input required type="number" name="vtoPH" value={formData.vtoPH} onChange={handleChange} placeholder="Ej. 2029" min="2000" max="2100" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento Carga (Mes/Año)</label>
+                        <input required type="month" name="vtoCarga" value={formData.vtoCarga} onChange={handleChange} />
+                    </div>
                 </div>
 
                 <div>
@@ -125,16 +136,7 @@ export default function AltaForm() {
                     <input name="remitoProveedor" value={formData.remitoProveedor} onChange={handleChange} placeholder="Ej. R-0001-4567" />
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento PH (Mes/Año)</label>
-                        <input required type="month" name="vtoPH" value={formData.vtoPH} onChange={handleChange} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento Carga (Mes/Año)</label>
-                        <input required type="month" name="vtoCarga" value={formData.vtoCarga} onChange={handleChange} />
-                    </div>
-                </div>
+
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Capacidad (kg)</label>

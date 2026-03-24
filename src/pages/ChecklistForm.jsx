@@ -60,6 +60,65 @@ export default function ChecklistForm() {
         senalizacionAcceso: 'B',
     });
 
+    // --- MEJORA: Autocompletado automático al ingresar ID ---
+    React.useEffect(() => {
+        const lookupDetails = async () => {
+            const id = String(formData.extintorId || '').trim().toLowerCase();
+            if (id.length < 2) return; // Esperar a que ingresen algo razonable
+
+            try {
+                // Usamos fetchAppStateWithCache para traer la base de datos (con SWR)
+                await fetchAppStateWithCache(
+                    (cached) => { processMatch(cached?.items, id); },
+                    (fresh) => { processMatch(fresh?.items, id); }
+                );
+            } catch (err) {
+                console.error("Error en autocompletado:", err);
+            }
+        };
+
+        const processMatch = (items, searchId) => {
+            if (!items) return;
+            const match = items.find(e => 
+                (e.N_Interno && String(e.N_Interno).toLowerCase() === searchId) ||
+                (e.N_Recipiente && String(e.N_Recipiente).toLowerCase() === searchId)
+            );
+
+            if (match) {
+                setFormData(prev => {
+                    // Solo actualizar si no han sido editados o si venimos de un cambio de ID radical
+                    // Para simplificar, si encontramos un match exacto, pisamos los metadatos base
+                    
+                    // Parse PH Year
+                    let phYear = '';
+                    if (match.Vto_PH) {
+                        const m = String(match.Vto_PH).match(/(20\d{2})/);
+                        if (m) phYear = m[0];
+                    }
+
+                    // Parse Carga Month
+                    let cargaMonth = '';
+                    if (match.Vto_Carga) {
+                        cargaMonth = String(match.Vto_Carga).substring(0, 7);
+                    }
+
+                    return {
+                        ...prev,
+                        ubicacion: match.Ubicacion || prev.ubicacion,
+                        vencimientoPH: phYear || prev.vencimientoPH,
+                        vtoCarga: cargaMonth || prev.vtoCarga,
+                        capacidad: match.Capacidad || prev.capacidad,
+                        estadoDisponibilidad: match.Estado_Disp || prev.estadoDisponibilidad
+                    };
+                });
+            }
+        };
+
+        lookupDetails();
+    }, [formData.extintorId]);
+    // -------------------------------------------------------
+
+
     const detectStatus = (ubicacionTxt) => {
         const lower = ubicacionTxt.toLowerCase();
         if (lower.includes('base nqn') || lower.includes('base tratayen') || lower.includes('acopio')) {
@@ -155,7 +214,7 @@ export default function ChecklistForm() {
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador (Nº Fábrica o Nº Interno)</label>
-                            <input required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
+                            <input autoFocus required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
                         </div>
                         <div style={{ flex: 1, display: 'none' }}>
                             {/* Oculto, ya no se usa N_Recipiente manual porque el principal ahora es el fábrica */}

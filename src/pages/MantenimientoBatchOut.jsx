@@ -331,6 +331,7 @@ export default function MantenimientoBatchOut() {
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                     <input
                         type="text"
+                        autoFocus
                         placeholder="Ej: 794074 (Fábrica) o 6 (Interno)"
                         value={manualId}
                         onChange={(e) => setManualId(e.target.value)}
