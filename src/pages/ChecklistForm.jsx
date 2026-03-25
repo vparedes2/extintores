@@ -113,6 +113,7 @@ export default function ChecklistForm() {
 
                     return {
                         ...prev,
+                        nRecipiente: match.N_Recipiente || prev.nRecipiente,
                         ubicacion: match.Ubicacion || prev.ubicacion,
                         vencimientoPH: phYear || prev.vencimientoPH,
                         vtoCarga: cargaMonth || prev.vtoCarga,

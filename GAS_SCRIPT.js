@@ -581,8 +581,11 @@ function doPost(e) {
                 // Aumentamos a 16 elementos porque dejaremos A (0) en blanco para la numeración.
                 let newRow = new Array(16).fill("");
 
-                newRow[0] = "";               // A: Número correlativo (lo dejamos en blanco o el usuario lo numera manual)
-                newRow[1] = rowChecklist[2];  // B: Nº Recipiente
+                // Mapeo solicitado: N° Interno y N° Recipiente ambos con el N° de Fábrica/Recipiente
+                const displayId = rowChecklist[2] || rowChecklist[1] || ""; 
+
+                newRow[0] = displayId;        // A: Nº Interno (Ahora con Recipiente/Fábrica)
+                newRow[1] = displayId;        // B: Nº Recipiente
                 newRow[2] = rowChecklist[3];  // C: Ubicación
                 newRow[3] = rowChecklist[7];  // D: Placa de id
                 newRow[4] = rowChecklist[8];  // E: Vencimiento PH
