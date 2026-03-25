@@ -100,16 +100,50 @@ export default function Dashboard() {
                 </ul>
             </section>
 
+            <section className="glass-card" style={{ marginBottom: '2rem' }}>
+                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                    Resumen por Ubicación (Operativos)
+                </h3>
+                {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                        <Loader className="spin" size={24} color="var(--primary)" />
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {Object.entries(
+                            extintoresReales
+                                .filter(e => {
+                                    const d = (e.estado_disp || e.Estado_Disp || "").toLowerCase();
+                                    return (d.includes("disponible") || d.includes("afectado")) && !d.includes("no disponible");
+                                })
+                                .reduce((acc, curr) => {
+                                    const loc = curr.ubicacion || curr.Ubicacion || "Sin Ubicación";
+                                    if (!acc[loc]) acc[loc] = [];
+                                    acc[loc].push(curr.n_interno || curr.N_Interno || "S/N");
+                                    return acc;
+                                }, {})
+                        ).map(([loc, ids], idx) => (
+                            <div key={idx} style={{ fontSize: '0.875rem', padding: '0.5rem', borderLeft: '3px solid var(--primary)', background: 'rgba(255,255,255,0.03)' }}>
+                                <strong style={{ color: 'var(--primary)' }}>{loc}:</strong> {ids.length} equipos 
+                                <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                                    [{ids.join(', ')}]
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <section className="glass-card">
                 <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                    Extintores Operativos
+                    Lista de Equipos Operativos
                 </h3>
                 {loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
                         <Loader className="spin" size={32} color="var(--primary)" />
                     </div>
                 ) : extintoresReales.filter(e => {
-                    const d = (e.Estado_Disp || "").toLowerCase();
+                    const d = (e.estado_disp || e.Estado_Disp || "").toLowerCase();
                     return (d.includes("disponible") || d.includes("afectado")) && !d.includes("no disponible");
                 }).length === 0 ? (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>No hay extintores operativos aún.</p>
@@ -117,16 +151,16 @@ export default function Dashboard() {
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {extintoresReales
                             .filter(e => {
-                                const d = (e.Estado_Disp || "").toLowerCase();
+                                const d = (e.estado_disp || e.Estado_Disp || "").toLowerCase();
                                 return (d.includes("disponible") || d.includes("afectado")) && !d.includes("no disponible");
                             })
                             .map((ext, idx) => (
                                 <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
                                     <div>
-                                        <strong style={{ display: 'block', fontSize: '1rem' }}>{ext.N_Interno}</strong>
-                                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>📍 Ubicación: {ext.Ubicacion}</span>
+                                        <strong style={{ display: 'block', fontSize: '1rem' }}>{ext.n_interno || ext.N_Interno}</strong>
+                                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>📍 Ubicación: {ext.ubicacion || ext.Ubicacion}</span>
                                     </div>
-                                    <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '12px' }}>{ext.Estado_Disp}</span>
+                                    <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '12px' }}>{ext.estado_disp || ext.Estado_Disp}</span>
                                 </li>
                             ))}
                     </ul>

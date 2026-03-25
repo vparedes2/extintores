@@ -55,7 +55,9 @@ export default function BajaForm() {
             // Ocultamente mandamos el N_Interno al backend
             await sendToSheet({ ...formData, action: 'baja', extintorId: realExtintor.N_Interno });
             alert('Se ha registrado el movimiento del extintor.');
-            navigate('/');
+            // navigate('/');
+            setFormData({ ...formData, extintorId: '' });
+            if(inputRef.current) inputRef.current.focus();
         } catch (error) {
             alert('Hubo un error al registrar el movimiento.');
         } finally {

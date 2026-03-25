@@ -13,7 +13,7 @@ export default function AltaForm() {
 
     const [formData, setFormData] = useState({
         nInterno: initialExtintorId, nRecipiente: '', ubicacionSelect: '', ubicacionManual: '', estadoDisponibilidad: '',
-        vtoPH: '', vtoCarga: '', capacidad: '', agente: '',
+        vtoPH: new Date().getFullYear() + 5, vtoCarga: '', capacidad: '10', agente: 'ABC (Polvo químico)',
         remitoProveedor: ''
     });
 
@@ -21,8 +21,6 @@ export default function AltaForm() {
         const t = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 150);
         return () => clearTimeout(t);
     }, []);
-
-
 
     const detectStatus = (ubicacion) => {
         const lower = ubicacion.toLowerCase();
@@ -40,7 +38,8 @@ export default function AltaForm() {
         let newFormData = { ...formData, [name]: value };
 
         if (name === 'ubicacionSelect' || name === 'ubicacionManual') {
-            const combined = `${newFormData.ubicacionSelect} ${newFormData.ubicacionManual}`;
+            const prefix = newFormData.ubicacionSelect === 'Locación' ? '' : newFormData.ubicacionSelect;
+            const combined = `${prefix} ${newFormData.ubicacionManual}`.trim();
             newFormData.estadoDisponibilidad = detectStatus(combined);
         }
 
@@ -54,7 +53,8 @@ export default function AltaForm() {
                 const manual = formData.ubicacionManual ? formData.ubicacionManual + ` [GPS: ${cords}]` : `[GPS: ${cords}]`;
 
                 let newFormData = { ...formData, ubicacionManual: manual };
-                const combined = `${newFormData.ubicacionSelect} ${newFormData.ubicacionManual}`;
+                const prefix = newFormData.ubicacionSelect === 'Locación' ? '' : newFormData.ubicacionSelect;
+                const combined = `${prefix} ${newFormData.ubicacionManual}`.trim();
                 newFormData.estadoDisponibilidad = detectStatus(combined);
 
                 setFormData(newFormData);
@@ -70,13 +70,23 @@ export default function AltaForm() {
         try {
             await sendToSheet({ action: 'alta', ...formData });
             alert('Extintor guardado exitosamente');
-            navigate('/');
+            // Ya no navegamos a '/', nos quedamos aquí
+            setFormData({
+                ...formData,
+                nInterno: '',
+                nRecipiente: '',
+                remitoProveedor: ''
+            });
+            if(inputRef.current) inputRef.current.focus();
         } catch (error) {
             alert('Error guardando extintor');
         } finally {
             setLoading(false);
         }
     };
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 25 }, (_, i) => currentYear - 5 + i);
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
@@ -98,8 +108,10 @@ export default function AltaForm() {
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento PH (AÑO - YYYY)</label>
-                        <input required type="number" name="vtoPH" value={formData.vtoPH} onChange={handleChange} placeholder="Ej. 2029" min="2000" max="2100" />
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento PH (Año)</label>
+                        <select required name="vtoPH" value={formData.vtoPH} onChange={handleChange}>
+                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
                     </div>
                     <div style={{ flex: 1 }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento Carga (Mes/Año)</label>
@@ -114,14 +126,14 @@ export default function AltaForm() {
                         <option value="Base NQN">Base NQN</option>
                         <option value="Base Tratayén">Base Tratayén</option>
                         <option value="Acopio">Acopio</option>
-                        <option value="Locación">Locación (Especificar abajo)</option>
+                        <option value="Locación">Nueva Locación (Especificar abajo)</option>
                     </select>
                 </div>
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Ubicación Asignada (Detalle manual / GPS)</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <input name="ubicacionManual" value={formData.ubicacionManual} onChange={handleChange} placeholder="Ej. Pasillo Norte..." style={{ flex: 1, margin: 0 }} />
+                        <input name="ubicacionManual" value={formData.ubicacionManual} onChange={handleChange} placeholder="Ej. Pasillo Norte o Nombre de Locación..." style={{ flex: 1, margin: 0 }} />
                         <button type="button" onClick={getGPS} className="btn btn-secondary" style={{ width: 'auto', padding: '0 1rem' }} title="Obtener GPS">
                             <MapPin size={20} />
                         </button>
@@ -142,8 +154,6 @@ export default function AltaForm() {
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nº Remito Proveedor (Opcional si es ingreso nuevo/reparado)</label>
                     <input name="remitoProveedor" value={formData.remitoProveedor} onChange={handleChange} placeholder="Ej. R-0001-4567" />
                 </div>
-
-
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Capacidad (kg)</label>
@@ -168,7 +178,6 @@ export default function AltaForm() {
                         <option value="Halocabón">Halocabón</option>
                     </select>
                 </div>
-
 
                 <button type="submit" className="btn" style={{ marginTop: '1rem' }} disabled={loading}>
                     {loading ? 'Guardando...' : <><Save size={20} /> Registrar Ingreso</>}

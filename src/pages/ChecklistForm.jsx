@@ -190,7 +190,9 @@ export default function ChecklistForm() {
 
             await sendToSheet({ ...formData, action: 'checklist', extintorId: internalId });
             alert('Checklist enviado correctamente');
-            navigate('/');
+            // navigate('/');
+            setFormData(prev => ({ ...prev, extintorId: '', nRecipiente: '' }));
+            if(inputRef.current) inputRef.current.focus();
         } catch (error) {
             alert('Error de conexión con la hoja de cálculo');
         } finally {
