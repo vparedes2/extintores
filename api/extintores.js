@@ -36,7 +36,18 @@ export default async function handler(req, res) {
       body: typeof bodyData === "string" ? bodyData : JSON.stringify(bodyData),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (e) {
+        console.error("GAS returned non-JSON response:", responseText);
+        return res.status(500).json({
+            status: "error",
+            message: "Google Apps Script no devolvió JSON. Respuesta: " + responseText.substring(0, 200),
+            raw: responseText.substring(0, 500)
+        });
+    }
 
     if (bodyData && bodyData.action === "get_current_state") {
       res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=59");
