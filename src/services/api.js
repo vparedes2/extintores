@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbx_9t1ueoP3wVvPOfRY1txt3HH1GjQPm6CpBe_jcZ1OGYtJv3hSpXuu9HsO83GUbzIW/exec";
+const API_URL = "/api/extintores";
 
 export const sendToSheet = async (data) => {
   if (!API_URL) {
