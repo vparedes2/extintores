@@ -12,6 +12,15 @@
  * 10. Usa esa URL en el archivo src/services/api.js de tu app local.
  */
 
+// FUNCIÓN AUXILIAR GLOBAL: Obtener hoja ignorando mayúsculas/minúsculas
+function getSheet(name) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = ss.getSheets();
+    let s = sheets.find(sh => sh.getName().toUpperCase() === name.toUpperCase());
+    if (!s) s = ss.getSheetByName(name);
+    return s;
+}
+
 // Función principal que recibe las peticiones POST desde la App Local
 function doPost(e) {
     try {
@@ -19,14 +28,6 @@ function doPost(e) {
         const action = data.action; // Puede ser 'alta', 'baja', o 'checklist'
 
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-
-        // FUNCIÓN AUXILIAR: Obtener hoja ignorando mayúsculas/minúsculas
-        const getSheet = (name) => {
-            const sheets = spreadsheet.getSheets();
-            let s = sheets.find(sh => sh.getName().toUpperCase() === name.toUpperCase());
-            if (!s) s = spreadsheet.getSheet(name);
-            return s;
-        };
 
         // Obtenemos o creamos las pestañas necesarias
         let sheetName = '';
@@ -339,7 +340,7 @@ function doPost(e) {
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
-            let sheetRemito = spreadsheet.getSheet('REMITO_TEMPLATE');
+            let sheetRemito = getSheet('REMITO_TEMPLATE');
 
             if (!sheetRemito) {
                 // Auto-create template sheet if it's missing
@@ -486,8 +487,8 @@ function doPost(e) {
             const formattedNext = `${String(nextDateObj.getDate()).padStart(2, '0')}/${String(nextDateObj.getMonth() + 1).padStart(2, '0')}/${nextDateObj.getFullYear()}`;
 
             // Obtener checklist y Hoja 3
-            let sheetChecklist = spreadsheet.getSheet('CHECKLIST');
-            let sheetHoja3 = spreadsheet.getSheet('Hoja 3');
+            let sheetChecklist = getSheet('CHECKLIST');
+            let sheetHoja3 = getSheet('Hoja 3');
 
             if (!sheetChecklist || !sheetHoja3) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Falta pestaña CHECKLIST u Hoja 3" })).setMimeType(ContentService.MimeType.JSON);
@@ -649,7 +650,7 @@ function doPost(e) {
                 "fileName": "Reporte_Extintores_" + targetDateStr + ".pdf"
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'add_proveedor') {
-            let sheet = spreadsheet.getSheet('PROVEEDORES');
+            let sheet = getSheet('PROVEEDORES');
             if (!sheet) {
                 // Auto-crear la pestaña si el usuario no lo hizo
                 sheet = spreadsheet.insertSheet('PROVEEDORES');
@@ -667,7 +668,7 @@ function doPost(e) {
             return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
 
         } else if (action === 'add_email') {
-            let sheet = spreadsheet.getSheet('EMAILS_ALERTA');
+            let sheet = getSheet('EMAILS_ALERTA');
             if (!sheet) {
                 sheet = spreadsheet.insertSheet('EMAILS_ALERTA');
                 sheet.appendRow(["Email"]);
@@ -680,7 +681,7 @@ function doPost(e) {
             return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
 
         } else if (action === 'del_email') {
-            let sheet = spreadsheet.getSheet('EMAILS_ALERTA');
+            let sheet = getSheet('EMAILS_ALERTA');
             if (!sheet) return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
             
             const eData = sheet.getDataRange().getValues();
@@ -714,7 +715,7 @@ function doPost(e) {
 function doGet(e) {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        let sheet = spreadsheet.getSheet('ALTA');
+        let sheet = getSheet('ALTA');
 
         if (!sheet) {
             return ContentService.createTextOutput(JSON.stringify({ "status": "success", "data": [] })).setMimeType(ContentService.MimeType.JSON);
@@ -761,7 +762,7 @@ function checkVencimientosYEnviarCorreo() {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
         
         // 1. Obtener lista de correos
-        const sheetEmails = spreadsheet.getSheet('EMAILS_ALERTA');
+        const sheetEmails = getSheet('EMAILS_ALERTA');
         if (!sheetEmails) {
             Logger.log("No existe pestaña EMAILS_ALERTA. No se enviarán correos.");
             return;
@@ -792,7 +793,7 @@ function checkVencimientosYEnviarCorreo() {
         };
 
         const getAllDataFromSheet = (sheetName) => {
-            const tempSheet = spreadsheet.getSheet(sheetName);
+            const tempSheet = getSheet(sheetName);
             if (!tempSheet) return [];
             const values = tempSheet.getDataRange().getValues();
             if (values.length <= 1) return [];
