@@ -257,6 +257,7 @@ export default function ChecklistForm() {
                             <option value="Disponible">Disponible (Base/Acopio)</option>
                             <option value="Afectado a locación">Afectado a locación (Uso activo)</option>
                             <option value="No Disponible">No Disponible / En Reparación</option>
+                            <option value="Pendiente de Recarga (Bajar a Base NQN)">Pendiente de Recarga (Bajar a Base NQN)</option>
                         </select>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>

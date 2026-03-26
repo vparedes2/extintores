@@ -11,7 +11,7 @@ export default function Dashboard() {
     const [stats, setStats] = useState([
         { label: 'Total Registrados', value: 0, icon: <PackageSearch size={24} />, color: '#3b82f6' },
         { label: 'Disponibles O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981' },
-        { label: 'En Recarga', value: 0, icon: <Wrench size={24} />, color: '#f59e0b' },
+        { label: 'Pendientes Recarga', value: 0, icon: <Layers size={24} />, color: '#f59e0b' },
         { label: 'Vencidos/Baja', value: 0, icon: <ShieldAlert size={24} />, color: '#ef4444' }
     ]);
 
@@ -23,7 +23,7 @@ export default function Dashboard() {
                 setStats([
                     { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
                     { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
-                    { label: 'En Reparación', value: st.reparacion, icon: <Wrench size={24} />, color: '#f59e0b' },
+                    { label: 'Pendientes Recarga', value: st.pendientes || 0, icon: <Layers size={24} />, color: '#f59e0b' },
                     { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
                 ]);
                 setLoading(false);
@@ -98,6 +98,32 @@ export default function Dashboard() {
                         </li>
                     ))}
                 </ul>
+            </section>
+
+            <section className="glass-card" style={{ marginBottom: '2rem', borderLeft: '4px solid #f59e0b' }}>
+                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', color: '#f59e0b' }}>
+                    ⚠️ Pendientes de Recarga (Para Pañol)
+                </h3>
+                {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                        <Loader className="spin" size={24} color="#f59e0b" />
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {extintoresReales.filter(e => (e.estado_disp || e.Estado_Disp || "").toLowerCase().includes("pendien")).length === 0 ? (
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No hay equipos pendientes de recarga.</p>
+                        ) : (
+                            extintoresReales
+                                .filter(e => (e.estado_disp || e.Estado_Disp || "").toLowerCase().includes("pendien"))
+                                .map((ext, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(245, 158, 11, 0.05)', borderRadius: '4px' }}>
+                                        <strong>{ext.n_interno || ext.N_Interno}</strong>
+                                        <span style={{ fontSize: '0.875rem' }}>📍 {ext.ubicacion || ext.Ubicacion}</span>
+                                    </div>
+                                ))
+                        )}
+                    </div>
+                )}
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem' }}>

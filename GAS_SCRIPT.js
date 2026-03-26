@@ -262,6 +262,7 @@ function doPost(e) {
             let reparacion = 0;
             let vencidos = 0;
             let vigentes = 0;
+            let pendientes = 0;
 
             const now = new Date();
             const currentYear = now.getFullYear();
@@ -280,7 +281,9 @@ function doPost(e) {
                     return;
                 }
 
-                if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) {
+                if (estado.includes('pendien')) {
+                    pendientes++;
+                } else if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) {
                     reparacion++;
                 } else if (estado.includes('disponible') || estado.includes('afectado')) {
                     operativos++;
@@ -332,7 +335,8 @@ function doPost(e) {
                     "operativos": operativos,
                     "reparacion": reparacion,
                     "vencidos": vencidos,
-                    "vigentes": vigentes
+                    "vigentes": vigentes,
+                    "pendientes": pendientes
                 },
                 "items": finalItems,
                 "proveedores": proveedores,
