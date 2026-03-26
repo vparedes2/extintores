@@ -162,20 +162,29 @@ export default function Scanner() {
                             <p style={{ marginBottom: '1.5rem' }}>¿Qué acción deseas realizar con este equipo?</p>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <button className="btn" onClick={() => handleAction('checklist')}>📝 Realizar Checklist Inspección</button>
-
+                                <button className="btn" onClick={() => handleAction('checklist')}>📝 Realizar Inspección / Checklist</button>
+                                
                                 {foundExtintor.Estado_Disp && foundExtintor.Estado_Disp.toLowerCase().includes('reparaci') ? (
                                     <button
                                         className="btn"
                                         style={{ background: '#3b82f6', color: 'white' }}
                                         onClick={() => handleAction('mto-in')}
-                                    >⬇️ Recibir de Mantenimiento</button>
+                                    >⬇️ Recibir de Mantenimiento (Ingreso)</button>
                                 ) : (
                                     <button
                                         className="btn"
                                         style={{ background: '#f59e0b', color: 'black' }}
-                                        onClick={() => handleAction('mto-out')}
-                                    >⬆️ Enviar a Mantenimiento</button>
+                                        onClick={() => {
+                                            // Redirigimos al checklist pre-seleccionando el estado de recarga
+                                            navigate(`/checklist`, {
+                                                state: {
+                                                    extintorId: scanResult,
+                                                    extintorData: foundExtintor,
+                                                    preSelectedStatus: 'Pendiente de Recarga (Bajar a Base NQN)'
+                                                }
+                                            });
+                                        }}
+                                    >⚠️ Reportar Descargado (Bajar a Base)</button>
                                 )}
 
                                 <button className="btn btn-secondary" onClick={() => handleAction('baja')}>🗑️ Dar de Baja Definitiva</button>

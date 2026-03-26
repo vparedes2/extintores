@@ -39,8 +39,8 @@ export default function ChecklistForm() {
     const [formData, setFormData] = useState({
         extintorId: initialExtintorId,
         nRecipiente: initialData.N_Recipiente || '',
-        ubicacion: initialData.Ubicacion || '',
-        estadoDisponibilidad: initialData.Estado_Disp || '',
+        ubicacion: location.state?.preSelectedStatus ? 'Base NQN' : (initialData.Ubicacion || ''),
+        estadoDisponibilidad: location.state?.preSelectedStatus || '',
         fecha: new Date().toISOString().split('T')[0],
         inspecciono: '',
 
