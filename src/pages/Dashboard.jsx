@@ -10,8 +10,9 @@ export default function Dashboard() {
     // Mock data for initial MVP visualization (Fallback)
     const [stats, setStats] = useState([
         { label: 'Total Registrados', value: 0, icon: <PackageSearch size={24} />, color: '#3b82f6' },
-        { label: 'Disponibles O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981' },
-        { label: 'Pendientes Recarga', value: 0, icon: <Layers size={24} />, color: '#f59e0b' },
+        { label: 'Operativos O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981' },
+        { label: 'Pendientes (Base)', value: 0, icon: <Layers size={24} />, color: '#f59e0b' },
+        { label: 'En Taller (Afuera)', value: 0, icon: <Wrench size={24} />, color: '#6366f1' },
         { label: 'Vencidos/Baja', value: 0, icon: <ShieldAlert size={24} />, color: '#ef4444' }
     ]);
 
@@ -19,11 +20,12 @@ export default function Dashboard() {
         const handleData = (json) => {
             if (json && json.status === 'success') {
                 setExtintoresReales(json.items || []);
-                const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0 };
+                const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0, pendientes: 0 };
                 setStats([
                     { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
                     { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
-                    { label: 'Pendientes Recarga', value: st.pendientes || 0, icon: <Layers size={24} />, color: '#f59e0b' },
+                    { label: 'Pendientes (Base)', value: st.pendientes || 0, icon: <Layers size={24} />, color: '#f59e0b' },
+                    { label: 'En Taller (Afuera)', value: st.reparacion || 0, icon: <Wrench size={24} />, color: '#6366f1' },
                     { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
                 ]);
                 setLoading(false);
