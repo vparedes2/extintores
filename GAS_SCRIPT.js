@@ -550,23 +550,22 @@ function doPost(e) {
             for (let r = 0; r < headerValues.length; r++) {
                 for (let c = 0; c < headerValues[r].length; c++) {
                     let cellValue = String(headerValues[r][c] || "");
-                    let cellText = cellValue.toLowerCase();
+                    // Normalizar: quitar acentos y pasar a minúsculas para un match robusto
+                    let cleanText = cellValue.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                     
-                    if (cellText.includes("fecha")) {
+                    if (cleanText.includes("fecha")) {
                         // Inyectar solo Fecha de inspección
-                        let labelPart = cellValue.split(":")[0] || "Fecha";
-                        sheetHoja3.getRange(r + 1, c + 1).setValue(labelPart + ": " + formattedTarget);
-                        foundFecha = true;
+                        sheetHoja3.getRange(r + 1, c + 1).setValue("Fecha: " + formattedTarget);
                     } 
-                    else if (cellText.includes("proxima") || cellText.includes("visita") || cellText.includes("inspeccion:")) {
+                    
+                    if (cleanText.includes("proxima") || cleanText.includes("visita") || cleanText.includes("inspeccion")) {
                         // Inyectar solo Próxima Inspección (30 días después)
-                        let labelPart = cellValue.split(":")[0] || "Proxima Inspección";
-                        sheetHoja3.getRange(r + 1, c + 1).setValue(labelPart + ": " + formattedNext);
-                        foundFecha = true; // Marcamos como hallada alguna de las fechas
+                        // Usamos un if separado por si están en distintas celdas o la misma
+                        sheetHoja3.getRange(r + 1, c + 1).setValue("Próxima inspección: " + formattedNext);
                     }
-                    else if (!foundInsp && (cellText.includes("inspecciono") || cellText.includes("inspector") || cellText.includes("realizo"))) {
-                        let labelPart = cellValue.split(":")[0] || "Inspector";
-                        sheetHoja3.getRange(r + 1, c + 1).setValue(labelPart + ": " + (data.inspector || "S/D"));
+
+                    if (!foundInsp && (cleanText.includes("inspecciono") || cleanText.includes("inspector") || cleanText.includes("realizo"))) {
+                        sheetHoja3.getRange(r + 1, c + 1).setValue("Inspector: " + (data.inspector || "S/D"));
                         foundInsp = true;
                     }
                 }
