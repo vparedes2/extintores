@@ -758,9 +758,13 @@ function doOptions(e) {
         .setHeader("Access-Control-Allow-Methods", "POST, GET");
 }
 
-// ==========================================
+// ===============================================
 // CRONJOB: ALERTA DE VENCIMIENTOS (DIARIO)
-// ==========================================
+// ===============================================
+// INSTRUCCIONES DE ACTIVACIÓN:
+// 1. En el editor de Apps Script, ve a "Activadores" (icono de Reloj).
+// 2. "+ Añadir activador" -> Función: checkVencimientosYEnviarCorreo
+// 3. Fuente de evento: Según tiempo -> Por día -> Elige una hora (ej. 8am).
 function checkVencimientosYEnviarCorreo() {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -920,19 +924,27 @@ function checkVencimientosYEnviarCorreo() {
                 }
             }
 
-            // Procesar vencimiento PH (Anual YYYY)
+            // Procesar vencimiento PH (Anual YYYY o YYYY-MM)
             let vPHStr = String(eq.Vto_PH || "").trim();
-            if (vPHStr.length === 4) {
-                const phYear = parseInt(vPHStr, 10);
-                // Si el año próximo es el de vencimiento y estamos en diciembre, 
-                // o si estamos transitando el año de vencimiento
-                if (now.getFullYear() >= phYear - 1 && now.getMonth() >= 11) {
-                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
-                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
-                    }
-                } else if(now.getFullYear() >= phYear) {
-                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
-                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
+            if (vPHStr) {
+                let phYear = 0;
+                if (vPHStr.length === 4) {
+                    phYear = parseInt(vPHStr, 10);
+                } else if (vPHStr.includes('-')) {
+                    phYear = parseInt(vPHStr.split('-')[0], 10);
+                }
+
+                if (phYear > 0) {
+                    // Si el año próximo es el de vencimiento y estamos en diciembre, 
+                    // o si estamos transitando el año de vencimiento o ya pasó
+                    if (now.getFullYear() >= phYear - 1 && now.getMonth() >= 11) {
+                        if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                           alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
+                        }
+                    } else if(now.getFullYear() >= phYear) {
+                        if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                           alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
+                        }
                     }
                 }
             }
