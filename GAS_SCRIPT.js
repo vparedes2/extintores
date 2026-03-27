@@ -551,16 +551,16 @@ function doPost(e) {
                 for (let c = 0; c < headerValues[r].length; c++) {
                     let cellText = String(headerValues[r][c] || "").toLowerCase();
                     
-                    if (!foundFecha && cellText.includes("fecha")) {
-                        // Inyectar Fecha actual + Próxima en la misma celda para evitar que se corte o desaparezca
-                        let base = headerValues[r][c].toString().split(":")[0] + ": ";
-                        let combinedDateStr = base + formattedTarget + "   (Próxima: " + formattedNext + ")";
+                    if (!foundFecha && (cellText.includes("fecha") || cellText.includes("visita") || cellText.includes("vto") || cellText.includes("proxima"))) {
+                        // Inyectar Fecha actual + Próxima en la misma celda para asegurar visibilidad
+                        let labelPart = headerValues[r][c].toString().split(":")[0] || "Fecha";
+                        let combinedDateStr = labelPart + ": " + formattedTarget + "   (Proxima Visita: " + formattedNext + ")";
                         sheetHoja3.getRange(r + 1, c + 1).setValue(combinedDateStr);
                         foundFecha = true;
                     } 
-                    else if (!foundInsp && (cellText.includes("inspeccionó") || cellText.includes("inspector") || cellText.includes("realizó"))) {
-                        let base = headerValues[r][c].toString().split(":")[0] + ": ";
-                        sheetHoja3.getRange(r + 1, c + 1).setValue(base + data.inspector);
+                    else if (!foundInsp && (cellText.includes("inspecciono") || cellText.includes("inspector") || cellText.includes("realizo"))) {
+                        let labelPart = headerValues[r][c].toString().split(":")[0] || "Inspector";
+                        sheetHoja3.getRange(r + 1, c + 1).setValue(labelPart + ": " + (data.inspector || "S/D"));
                         foundInsp = true;
                     }
                 }
