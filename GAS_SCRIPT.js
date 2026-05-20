@@ -498,6 +498,10 @@ function doPost(e) {
                 return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Falta pestaña CHECKLIST u Hoja 3" })).setMimeType(ContentService.MimeType.JSON);
             }
 
+            // Asegurar que el título y el área del logo estén correctos
+            sheetHoja3.getRange("C1").setValue("Inspección de Extintores");
+            sheetHoja3.getRange("A1:B3").clearContent();
+
             // Filtrar checklists por la fecha solicitada
             const clData = sheetChecklist.getDataRange().getValues();
             if (clData.length <= 1) {
