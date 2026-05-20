@@ -548,23 +548,26 @@ function doPost(e) {
             let foundInsp = false;
 
             for (let r = 0; r < headerValues.length; r++) {
+                // Saltar las primeras 3 filas (Fila 1, 2 y 3) para no sobreescribir el logo en A1:B3 ni el título en C1:O3
+                if (r < 3) continue;
+
                 for (let c = 0; c < headerValues[r].length; c++) {
                     let cellValue = String(headerValues[r][c] || "");
                     // Normalizar: quitar acentos y pasar a minúsculas para un match robusto
                     let cleanText = cellValue.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                     
-                    if (cleanText.includes("fecha")) {
+                    if (cleanText.includes("fecha") && !cleanText.includes("proxima") && !cleanText.includes("visita")) {
                         // Inyectar solo Fecha de inspección
                         sheetHoja3.getRange(r + 1, c + 1).setValue("Fecha: " + formattedTarget);
+                        foundFecha = true;
                     } 
                     
-                    if (cleanText.includes("proxima") || cleanText.includes("visita") || cleanText.includes("inspeccion")) {
+                    if (cleanText.includes("proxima") || cleanText.includes("visita")) {
                         // Inyectar solo Próxima Inspección (30 días después)
-                        // Usamos un if separado por si están en distintas celdas o la misma
                         sheetHoja3.getRange(r + 1, c + 1).setValue("Próxima inspección: " + formattedNext);
                     }
 
-                    if (!foundInsp && (cleanText.includes("inspecciono") || cleanText.includes("inspector") || cleanText.includes("realizo"))) {
+                    if (cleanText.includes("inspecciono") || cleanText.includes("inspector") || cleanText.includes("realizo")) {
                         sheetHoja3.getRange(r + 1, c + 1).setValue("Inspector: " + (data.inspector || "S/D"));
                         foundInsp = true;
                     }
@@ -782,12 +785,63 @@ function checkVencimientosYEnviarCorreo() {
         }
         
         const eData = sheetEmails.getDataRange().getValues();
-        const emailsArr = eData.slice(1).map(row => String(row[0]).trim()).filter(e => e.includes('@'));
+        const emailsArr = [];
+        eData.forEach(row => {
+            const email = String(row[0] || "").trim();
+            if (email.includes('@')) {
+                emailsArr.push(email);
+            }
+        });
         
         if (emailsArr.length === 0) {
             Logger.log("Lista de correos vacía. Cancelando envío de Alertas.");
             return;
         }
+
+        // Helper parsers robustos para fechas y años de vencimiento
+        const parseVtoCargaDate = (val) => {
+            if (!val) return null;
+            if (Object.prototype.toString.call(val) === '[object Date]') {
+                return isNaN(val.getTime()) ? null : val;
+            }
+            const str = String(val).trim();
+            // Si es YYYY-MM o YYYY-MM-DD
+            const yyyymmMatch = str.match(/^(\d{4})[\/\-](\d{1,2})/);
+            if (yyyymmMatch) {
+                return new Date(parseInt(yyyymmMatch[1], 10), parseInt(yyyymmMatch[2], 10) - 1, 1);
+            }
+            // Si es DD-MM-YYYY o DD/MM/YYYY
+            const latamMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+            if (latamMatch) {
+                return new Date(parseInt(latamMatch[3], 10), parseInt(latamMatch[2], 10) - 1, parseInt(latamMatch[1], 10));
+            }
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? null : d;
+        };
+
+        const parseVtoPHYear = (val) => {
+            if (!val) return 0;
+            if (Object.prototype.toString.call(val) === '[object Date]') {
+                return isNaN(val.getTime()) ? 0 : val.getFullYear();
+            }
+            const str = String(val).trim();
+            // Si es YYYY
+            if (str.length === 4 && !isNaN(str)) {
+                return parseInt(str, 10);
+            }
+            // Si es YYYY-MM o YYYY-MM-DD
+            const yyyymmMatch = str.match(/^(\d{4})[\/\-]/);
+            if (yyyymmMatch) {
+                return parseInt(yyyymmMatch[1], 10);
+            }
+            // Si es DD-MM-YYYY o DD/MM/YYYY
+            const latamMatch = str.match(/[\/\-](\d{4})$/);
+            if (latamMatch) {
+                return parseInt(latamMatch[1], 10);
+            }
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? 0 : d.getFullYear();
+        };
 
         // 2. Extraer estado de todo el inventario (Lógica local simplificada)
         const normalizeKey = (rawHeader) => {
@@ -909,47 +963,40 @@ function checkVencimientosYEnviarCorreo() {
             // Ignorar los dados de baja o en reparación activa
             if (estado.includes('baja') || estado.includes('reparaci') || estado.includes('recarga') || estado.includes('no disponible')) return;
 
-            // Procesar vencimiento Carga (YYYY-MM)
-            let vCargaStr = String(eq.Vto_Carga || "").trim();
-            if (vCargaStr && vCargaStr.includes('-')) {
-                const parts = vCargaStr.split('-');
-                if(parts.length >= 2) {
-                    const y = parseInt(parts[0], 10);
-                    const m = parseInt(parts[1], 10);
-                    const vtoObj = new Date(y, m - 1, 1); // Analizamos comienzo de ese mes en bruto
-                    
-                    if (future30 >= vtoObj || now >= vtoObj) {
-                        alertas.push({
-                            id: eq.N_Interno || eq.N_Recipiente,
-                            ubicacion: eq.Ubicacion || "S/D",
-                            vto: vCargaStr,
-                            tipo: "Vto. Carga"
-                        });
-                    }
+            // Procesar vencimiento Carga (YYYY-MM o Date)
+            const vtoCargaDate = parseVtoCargaDate(eq.Vto_Carga);
+            if (vtoCargaDate) {
+                if (future30 >= vtoCargaDate || now >= vtoCargaDate) {
+                    const formattedVto = Utilities.formatDate(vtoCargaDate, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM");
+                    alertas.push({
+                        id: eq.N_Interno || eq.N_Recipiente,
+                        ubicacion: eq.Ubicacion || "S/D",
+                        vto: formattedVto,
+                        tipo: "Vto. Carga"
+                    });
                 }
             }
 
-            // Procesar vencimiento PH (Anual YYYY o YYYY-MM)
-            let vPHStr = String(eq.Vto_PH || "").trim();
-            if (vPHStr) {
-                let phYear = 0;
-                if (vPHStr.length === 4) {
-                    phYear = parseInt(vPHStr, 10);
-                } else if (vPHStr.includes('-')) {
-                    phYear = parseInt(vPHStr.split('-')[0], 10);
-                }
-
-                if (phYear > 0) {
-                    // Si el año próximo es el de vencimiento y estamos en diciembre, 
-                    // o si estamos transitando el año de vencimiento o ya pasó
-                    if (now.getFullYear() >= phYear - 1 && now.getMonth() >= 11) {
-                        if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
-                           alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
-                        }
-                    } else if(now.getFullYear() >= phYear) {
-                        if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
-                           alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: vPHStr, tipo: "Prueba Hist." });
-                        }
+            // Procesar vencimiento PH (Anual YYYY, YYYY-MM o Date)
+            const phYear = parseVtoPHYear(eq.Vto_PH);
+            if (phYear > 0) {
+                // Si el año próximo es el de vencimiento y estamos en diciembre, 
+                // o si estamos transitando el año de vencimiento o ya pasó
+                if (now.getFullYear() >= phYear - 1 && now.getMonth() >= 11) {
+                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                       let displayPH = String(eq.Vto_PH);
+                       if (Object.prototype.toString.call(eq.Vto_PH) === '[object Date]') {
+                           displayPH = Utilities.formatDate(eq.Vto_PH, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM");
+                       }
+                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: displayPH, tipo: "Prueba Hist." });
+                    }
+                } else if(now.getFullYear() >= phYear) {
+                    if(!alertas.find(a => a.id === (eq.N_Interno || eq.N_Recipiente))) {
+                       let displayPH = String(eq.Vto_PH);
+                       if (Object.prototype.toString.call(eq.Vto_PH) === '[object Date]') {
+                           displayPH = Utilities.formatDate(eq.Vto_PH, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM");
+                       }
+                       alertas.push({ id: eq.N_Interno || eq.N_Recipiente, ubicacion: eq.Ubicacion || "S/D", vto: displayPH, tipo: "Prueba Hist." });
                     }
                 }
             }
