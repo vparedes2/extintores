@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CheckCircle, Package, Send, Trash2, StopCircle, X } from 'lucide-react';
+import { Camera, CheckCircle, Package, Send, Trash2, StopCircle, X, HelpCircle } from 'lucide-react';
 import { sendToSheet, fetchAppStateWithCache } from '../services/api';
 
 export default function MantenimientoBatchOut() {
@@ -138,18 +138,23 @@ export default function MantenimientoBatchOut() {
 
                         const estado = String(eq.Estado_Disp || "").toLowerCase();
                         if (estado.includes('reparaci') || estado.includes('recarga') || estado.includes('baja')) {
-                            // Optionally, we could show a toast here, but alerts interrupt scanning.
-                            // So we just ignore it for the scanner.
+                            // Ignorar silenciosamente
                             return;
                         }
-                    }
 
-                    setScannedItems(prev => {
-                        // Evitar duplicados
-                        if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
-                        playScanSound();
-                        return [...prev, { id, nInterno: extintoresDb[id]?.N_Interno || id, timestamp: new Date() }];
-                    });
+                        const resolvedId = eq.N_Recipiente ? String(eq.N_Recipiente).toUpperCase() : String(eq.N_Interno).toUpperCase();
+                        setScannedItems(prev => {
+                            if (prev.some(item => String(item.id).toUpperCase() === resolvedId)) return prev;
+                            playScanSound();
+                            return [...prev, { id: resolvedId, nInterno: eq.N_Interno || resolvedId, timestamp: new Date() }];
+                        });
+                    } else {
+                        setScannedItems(prev => {
+                            if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
+                            playScanSound();
+                            return [...prev, { id, nInterno: id, timestamp: new Date() }];
+                        });
+                    }
                 },
                 (errorMessage) => {
                     // Ignorar errores de escaneo continuo
@@ -209,20 +214,25 @@ export default function MantenimientoBatchOut() {
             // Detenemos cámara si estaba activa
             await stopScanner();
 
-            // 1. Enviar salidas individuales de forma SECUENCIAL para evitar colapsar Google Apps Script
+            // 1. Enviar salida en un lote único
             const hoy = new Date().toISOString().split('T')[0];
+            const idsDespacho = scannedItems.map(item => item.nInterno || item.id);
             
-            for (const item of scannedItems) {
-                await sendToSheet({
-                    action: 'mto_out',
-                    extintorId: item.nInterno || item.id, // Backend strictly requires N_Interno
-                    fecha: hoy,
-                    proveedor: formData.proveedor,
-                    motivo: formData.motivo,
-                    observaciones: 'Despacho automático por lote',
-                    remito: formData.remito,
-                    responsable: formData.responsable
-                });
+            const batchResult = await sendToSheet({
+                action: 'batch_mto_out',
+                extintores: idsDespacho,
+                fecha: hoy,
+                proveedor: formData.proveedor,
+                motivo: formData.motivo,
+                observaciones: 'Despacho automático por lote',
+                remito: formData.remito,
+                responsable: formData.responsable
+            });
+
+            if (!batchResult || batchResult.status !== 'success') {
+                alert("Error al registrar despacho en lote: " + (batchResult?.message || "Error desconocido"));
+                setLoading(false);
+                return;
             }
 
             // 2. Generar el Remito Consolidado
@@ -277,7 +287,15 @@ export default function MantenimientoBatchOut() {
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <header style={{ marginBottom: '2rem' }}>
-                <h2>Despacho Múltiple a Mantenimiento</h2>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <h2>Despacho Múltiple a Mantenimiento</h2>
+                    <div className="tooltip-container" style={{ marginLeft: '1rem' }}>
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Registra el envío de múltiples extintores en un solo paso hacia un proveedor externo para su recarga o mantenimiento.
+                        </span>
+                    </div>
+                </div>
                 <p>Escanea varios equipos a la vez y genera un único remito de salida.</p>
             </header>
 
@@ -312,6 +330,9 @@ export default function MantenimientoBatchOut() {
                 const id = manualId.trim().toUpperCase();
                 if (!id) return;
 
+                let resolvedId = id;
+                let nInternoVal = id;
+
                 // Validate existence
                 if (Object.keys(extintoresDb).length > 0) {
                     const eq = extintoresDb[id];
@@ -325,21 +346,31 @@ export default function MantenimientoBatchOut() {
                         alert(`El extintor Nº ${id} ya se encuentra "${eq.Estado_Disp}". No puedes enviarlo de nuevo a mantenimiento.`);
                         return;
                     }
+
+                    resolvedId = eq.N_Recipiente ? String(eq.N_Recipiente).toUpperCase() : String(eq.N_Interno).toUpperCase();
+                    nInternoVal = eq.N_Interno || resolvedId;
                 }
 
                 setScannedItems(prev => {
-                    if (prev.some(item => String(item.id).toUpperCase() === id)) return prev;
-                    if (isScanning) playScanSound();
-                    return [...prev, { id: id, nInterno: extintoresDb[id]?.N_Interno || id, timestamp: new Date() }];
+                    if (prev.some(item => String(item.id).toUpperCase() === resolvedId)) return prev;
+                    playScanSound();
+                    return [...prev, { id: resolvedId, nInterno: nInternoVal, timestamp: new Date() }];
                 });
                 setManualId('');
             }} className="glass-card" style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>O añadir manualmente:</h3>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)' }}>O añadir manualmente:</h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Ingresa el Nº de recipiente (grabado en el envase) o el Nº interno asignado por la empresa.
+                        </span>
+                    </div>
+                </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                      <input
                         ref={manualInputRef}
                         type="text"
-                        autoFocus
                         placeholder="Ej: 794074 (Fábrica) o 6 (Interno)"
                         value={manualId}
                         onChange={(e) => setManualId(e.target.value)}
@@ -353,10 +384,18 @@ export default function MantenimientoBatchOut() {
 
             {/* LISTA ADQUIRIDA */}
             <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
-                    <Package className="icon-primary" />
-                    Bandeja de Salida ({scannedItems.length})
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 0, marginBottom: '1rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                        <Package className="icon-primary" />
+                        Bandeja de Salida ({scannedItems.length})
+                    </h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Lista de extintores seleccionados para este despacho. Puedes eliminar cualquiera de la lista antes de enviar.
+                        </span>
+                    </div>
+                </div>
 
                 {scannedItems.length === 0 ? (
                     <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem 0' }}>La bandeja está vacía. Comienza a escanear extintores.</p>
@@ -377,8 +416,17 @@ export default function MantenimientoBatchOut() {
             {/* FORMULARIO COMÚN */}
             <form onSubmit={handleSubmit} className="glass-card">
                 <h3 style={{ marginTop: 0 }}>Parámetros de Despacho</h3>
+                
                 <div className="form-group">
-                    <label>Proveedor / Empresa</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0 }}>Proveedor / Empresa</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Empresa de mantenimiento certificada a la que se envían los equipos.
+                            </span>
+                        </div>
+                    </div>
                     <select
                         required
                         value={formData.proveedor}
@@ -401,7 +449,15 @@ export default function MantenimientoBatchOut() {
                 </div>
 
                 <div className="form-group">
-                    <label>Motivo Central</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0 }}>Motivo Central</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Selecciona si el envío es para recarga general, cambio de válvula/reparación o prueba hidráulica obligatoria de 5 años.
+                            </span>
+                        </div>
+                    </div>
                     <select required value={formData.motivo} onChange={e => setFormData({ ...formData, motivo: e.target.value })}>
                         <option value="Mantenimiento General / Recarga">Mantenimiento General / Recarga</option>
                         <option value="Prueba Hidráulica (PH)">Prueba Hidráulica (PH)</option>
@@ -411,7 +467,15 @@ export default function MantenimientoBatchOut() {
                 </div>
 
                 <div className="form-group">
-                    <label>Responsable de Entrega (Tú)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0 }}>Responsable de Entrega (Tú)</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Nombre y apellido del operador que realiza el despacho.
+                            </span>
+                        </div>
+                    </div>
                     <input
                         type="text"
                         required
@@ -422,7 +486,15 @@ export default function MantenimientoBatchOut() {
                 </div>
 
                 <div className="form-group">
-                    <label>Nº de Remito Remitente (Opcional)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0 }}>Nº de Remito Remitente (Opcional)</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Número del remito en papel o preimpreso de la empresa para trazabilidad física cruzada.
+                            </span>
+                        </div>
+                    </div>
                     <input
                         type="text"
                         placeholder="Si tienes un talonario manual"

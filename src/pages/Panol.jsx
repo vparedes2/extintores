@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Search, Download, ShieldAlert, Plus, X } from 'lucide-react';
+import { Truck, Search, Download, ShieldAlert, Plus, X, HelpCircle } from 'lucide-react';
 import { fetchAppState, fetchAppStateWithCache, sendToSheet } from '../services/api';
 
 export default function Panol() {
@@ -158,16 +158,32 @@ export default function Panol() {
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h2>Pañol & Logística</h2>
-                    <p>Control de extintores en mantenimiento exterior.</p>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div>
+                        <h2>Pañol & Logística</h2>
+                        <p>Control de extintores en mantenimiento exterior.</p>
+                    </div>
+                    <div className="tooltip-container" style={{ marginLeft: '1rem' }}>
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Muestra los equipos que están pendientes de envío o que ya han sido despachados a mantenimiento/reparación en un taller externo.
+                        </span>
+                    </div>
                 </div>
                 <div style={{ background: 'var(--danger)', color: 'white', padding: '0.5rem 1rem', borderRadius: '20px', fontWeight: 'bold' }}>
                     {extintoresPañol.length} en proceso
                 </div>
             </header>
             <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generar Remito de Salida a Proveedor</h3>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generar Remito de Salida a Proveedor</h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Selecciona el taller de destino, introduce el motivo de envío y haz clic en "Exportar PDF" para generar e imprimir el remito oficial de traslado.
+                        </span>
+                    </div>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <select
                             value={remitoData.proveedor}
@@ -234,9 +250,22 @@ export default function Panol() {
                                 </div>
                                 <div>
                                     <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Fábrica: {ext.nRecipiente || 'S/D'} <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 'normal' }}>({ext.capacidad}kg {ext.tipo})</span></h4>
-                                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        Interno: <span style={{ color: 'var(--text-muted)' }}>{ext.nInterno || 'S/D'}</span> | Origen: {ext.ubicacion}
-                                    </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            Interno: <span style={{ color: 'var(--text-muted)' }}>{ext.nInterno || 'S/D'}</span> | Origen: {ext.ubicacion}
+                                        </p>
+                                        <span style={{
+                                            fontSize: '0.75rem',
+                                            padding: '0.15rem 0.4rem',
+                                            borderRadius: '6px',
+                                            fontWeight: '600',
+                                            background: (ext.estado || "").toLowerCase().includes("pendien") ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                            color: (ext.estado || "").toLowerCase().includes("pendien") ? '#f59e0b' : '#3b82f6',
+                                            border: (ext.estado || "").toLowerCase().includes("pendien") ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
+                                        }}>
+                                            {(ext.estado || "").toLowerCase().includes("pendien") ? 'Pendiente Envío' : 'En Taller'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

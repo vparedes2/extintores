@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Wrench, PackageSearch, Loader, Layers } from 'lucide-react';
-import { fetchExtintores, fetchAppStateWithCache } from '../services/api';
+import { ShieldCheck, ShieldAlert, Wrench, PackageSearch, Loader, Layers, HelpCircle } from 'lucide-react';
+import { fetchAppStateWithCache } from '../services/api';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [extintoresReales, setExtintoresReales] = useState([]);
+    const [recentActivity, setRecentActivity] = useState([
+        { id: '1', action: 'Visualización Activa', extinguisher: 'Esperando registros...', time: 'Ahora' }
+    ]);
 
-    // Mock data for initial MVP visualization (Fallback)
+    // Fallback inicial
     const [stats, setStats] = useState([
         { label: 'Total Registrados', value: 0, icon: <PackageSearch size={24} />, color: '#3b82f6' },
         { label: 'Operativos O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981' },
@@ -28,6 +31,22 @@ export default function Dashboard() {
                     { label: 'En Taller (Afuera)', value: st.reparacion || 0, icon: <Wrench size={24} />, color: '#6366f1' },
                     { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
                 ]);
+
+                if (json.movimientos && json.movimientos.length > 0) {
+                    setRecentActivity(json.movimientos.map((m, idx) => ({
+                        id: String(idx),
+                        action: m.action,
+                        extinguisher: `${m.extinguisher} - ${m.detail}`,
+                        time: m.time
+                    })));
+                } else if (json.items && json.items.length > 0) {
+                    setRecentActivity(json.items.slice(-3).reverse().map((ext, idx) => ({
+                        id: String(idx),
+                        action: 'Registro en sistema',
+                        extinguisher: `EXT: ${ext.N_Interno} - ${ext.Estado_Disp || 'S/D'}`,
+                        time: new Date(ext.Timestamp).toLocaleDateString()
+                    })));
+                }
                 setLoading(false);
             }
         };
@@ -36,8 +55,8 @@ export default function Dashboard() {
             setLoading(true);
             try {
                 await fetchAppStateWithCache(
-                    (cachedJson) => { handleData(cachedJson); }, // Función rápida (Caché local a 0ms)
-                    (freshJson) => { handleData(freshJson); }    // Función de actualización silenciosa de fondo
+                    (cachedJson) => { handleData(cachedJson); },
+                    (freshJson) => { handleData(freshJson); }
                 );
             } catch (error) {
                 console.error("Dashboard Stats Fetch Error:", error);
@@ -46,17 +65,6 @@ export default function Dashboard() {
         };
         loadDocs();
     }, []);
-
-    const recentActivity = extintoresReales.length > 0
-        ? extintoresReales.slice(-3).reverse().map((ext, idx) => ({
-            id: idx,
-            action: 'Registro en sistema',
-            extinguisher: `EXT: ${ext.N_Interno} - ${ext.Estado_Disp || 'S/D'}`,
-            time: new Date(ext.Timestamp).toLocaleDateString()
-        }))
-        : [
-            { id: '1', action: 'Visualización Activa', extinguisher: 'Esperando registros...', time: 'Ahora' }
-        ];
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
@@ -78,7 +86,15 @@ export default function Dashboard() {
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Logística Avanzada</h3>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0 }}>Logística Avanzada</h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Permite despachar múltiples extintores en lote para enviar a mantenimiento o recarga al mismo proveedor.
+                        </span>
+                    </div>
+                </div>
                 <Link to="/mto-batch" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
                     <Layers size={20} />
                     Despacho por Lote (Mantenimiento)
@@ -86,9 +102,17 @@ export default function Dashboard() {
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                    Últimos Movimientos
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>
+                        Últimos Movimientos
+                    </h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Muestra las últimas 5 acciones reales (inspecciones, salidas, ingresos y bajas) registradas en el sistema.
+                        </span>
+                    </div>
+                </div>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {recentActivity.map((item) => (
                         <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -103,9 +127,17 @@ export default function Dashboard() {
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem', borderLeft: '4px solid #f59e0b' }}>
-                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', color: '#f59e0b' }}>
-                    ⚠️ Pendientes de Recarga (Para Pañol)
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0, color: '#f59e0b' }}>
+                        ⚠️ Pendientes de Recarga (Para Pañol)
+                    </h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" style={{ color: '#f59e0b' }} />
+                        <span className="tooltip-text">
+                            Extintores retirados de servicio por estar vencidos, descargados o defectuosos, que deben ser llevados a la Base NQN.
+                        </span>
+                    </div>
+                </div>
                 {loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
                         <Loader className="spin" size={24} color="#f59e0b" />

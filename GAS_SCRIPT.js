@@ -34,7 +34,7 @@ function doPost(e) {
         if (action === 'alta') sheetName = 'ALTA';
         else if (action === 'baja') sheetName = 'BAJA';
         else if (action === 'checklist') sheetName = 'CHECKLIST';
-        else if (action === 'mto_out' || action === 'mto_in') sheetName = 'MANTENIMIENTO';
+        else if (action === 'mto_out' || action === 'mto_in' || action === 'batch_mto_out') sheetName = 'MANTENIMIENTO';
         else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email' || action === 'test_alerts') sheetName = null;
         else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
@@ -46,7 +46,7 @@ function doPost(e) {
             if (action === 'alta') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Vto_PH', 'Vto_Carga', 'Capacidad', 'Agente', 'Tarjeta_ID', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso', 'Remito_Prov']);
             if (action === 'baja') sheet.appendRow(['Timestamp', 'N_Interno', 'Destino', 'Observaciones', 'Proveedor', 'Remito_Sal']);
             if (action === 'checklist') sheet.appendRow(['Timestamp', 'N_Interno', 'N_Recipiente', 'Ubicacion', 'Estado_Disp', 'Fecha', 'Inspector', 'Placa_ID', 'Vto_PH', 'Vto_Carga', 'Capacidad_Valor', 'Agente', 'Manometro', 'Palanca', 'Manguera', 'Precinto', 'Soporte', 'Estado_Rec', 'Acceso']);
-            if (action === 'mto_out' || action === 'mto_in') sheet.appendRow(['Timestamp', 'Tipo_Movimiento', 'N_Interno', 'Fecha_Movimiento', 'Proveedor', 'Motivo_Trabajo', 'Observaciones', 'Remito', 'Responsable', 'Nuevo_Vto_Carga', 'Nuevo_Vto_PH', 'Check_Visual']);
+            if (action === 'mto_out' || action === 'mto_in' || action === 'batch_mto_out') sheet.appendRow(['Timestamp', 'Tipo_Movimiento', 'N_Interno', 'Fecha_Movimiento', 'Proveedor', 'Motivo_Trabajo', 'Observaciones', 'Remito', 'Responsable', 'Nuevo_Vto_Carga', 'Nuevo_Vto_PH', 'Check_Visual']);
         }
 
         // Insertar los datos según la acción
@@ -98,6 +98,14 @@ function doPost(e) {
             sheet.appendRow([
                 timestamp, 'SALIDA', data.extintorId, data.fecha, data.proveedor, data.motivo, data.observaciones, data.remito, data.responsable, "", "", ""
             ]);
+        } else if (action === 'batch_mto_out') {
+            const extintores = data.extintores || [];
+            extintores.forEach(extId => {
+                sheet.appendRow([
+                    timestamp, 'SALIDA', extId, data.fecha, data.proveedor, data.motivo, data.observaciones, data.remito, data.responsable, "", "", ""
+                ]);
+            });
+            return ContentService.createTextOutput(JSON.stringify({ "status": "success", "count": extintores.length })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'mto_in') {
             const clCarga = normalizeVtoMonth(data.vtoCarga);
             const clPH = data.vtoPH || "";
@@ -200,31 +208,46 @@ function doPost(e) {
             const equipos = new Map();
 
             dataAlta.forEach(a => {
-                const id = String(a.N_Interno || a.N_Recipiente).trim();
-                equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
+                const id = String(a.N_Recipiente || a.N_Interno || "").trim();
+                if (id) {
+                    equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
+                }
             });
+
+            const findEquipo = (idStr) => {
+                const search = String(idStr || "").trim().toLowerCase();
+                if (!search) return null;
+                if (equipos.has(search)) return equipos.get(search);
+                for (let eq of equipos.values()) {
+                    if ((eq.N_Interno && String(eq.N_Interno).trim().toLowerCase() === search) || 
+                        (eq.N_Recipiente && String(eq.N_Recipiente).trim().toLowerCase() === search)) {
+                        return eq;
+                    }
+                }
+                return null;
+            };
 
             dataChecklist.forEach(c => {
                 const id = String(c.N_Interno || c.N_Recipiente).trim();
                 const ts = safeParseDate(c.Timestamp);
-                if (equipos.has(id)) {
-                    let eq = equipos.get(id);
+                const eq = findEquipo(id);
+                if (eq) {
                     if (ts > eq.Ultimo_Movimiento) {
                         eq.Estado_Disp = c.Estado_Disp;
                         eq.Ubicacion = c.Ubicacion;
                         eq.Vto_Carga = c.Vto_Carga;
                         eq.Ultimo_Movimiento = ts;
-                        equipos.set(id, eq);
+                        const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                        equipos.set(key, eq);
                     }
                 }
             });
 
             dataManto.forEach(m => {
                 const id = String(m.N_Interno || m.N_Recipiente).trim();
-                // En mantenimiento usamos Timestamp para desempate si la tabla se carga rapido
                 const ts = safeParseDate(m.Timestamp);
-                if (equipos.has(id)) {
-                    let eq = equipos.get(id);
+                const eq = findEquipo(id);
+                if (eq) {
                     if (ts >= eq.Ultimo_Movimiento) {
                         const tipo = String(m.Tipo_Movimiento).toUpperCase();
                         if (tipo === 'SALIDA') {
@@ -237,7 +260,8 @@ function doPost(e) {
                             if (m.Nuevo_Vto_PH) eq.Vto_PH = m.Nuevo_Vto_PH;
                         }
                         eq.Ultimo_Movimiento = ts;
-                        equipos.set(id, eq);
+                        const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                        equipos.set(key, eq);
                     }
                 }
             });
@@ -245,17 +269,69 @@ function doPost(e) {
             dataBaja.forEach(b => {
                 const id = String(b.N_Interno || b.N_Recipiente).trim();
                 const ts = safeParseDate(b.Timestamp);
-                if (equipos.has(id)) {
-                    let eq = equipos.get(id);
+                const eq = findEquipo(id);
+                if (eq) {
                     if (ts >= eq.Ultimo_Movimiento) {
                         eq.Estado_Disp = `Baja: ${b.Destino}`;
                         eq.Ultimo_Movimiento = ts;
-                        equipos.set(id, eq);
+                        const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                        equipos.set(key, eq);
                     }
                 }
             });
 
             const finalItems = Array.from(equipos.values());
+
+            // == HISTORIAL DE MOVIMIENTOS REALES ==
+            let todosLosMovimientos = [];
+
+            dataAlta.forEach(a => {
+                todosLosMovimientos.push({
+                    timestamp: safeParseDate(a.Timestamp),
+                    action: 'Alta en sistema',
+                    extinguisher: `EXT: ${a.N_Interno || a.N_Recipiente}`,
+                    detail: `Ubicación inicial: ${a.Ubicacion || 'Pañol'}`
+                });
+            });
+
+            dataChecklist.forEach(c => {
+                todosLosMovimientos.push({
+                    timestamp: safeParseDate(c.Timestamp),
+                    action: 'Inspección',
+                    extinguisher: `EXT: ${c.N_Interno || c.N_Recipiente}`,
+                    detail: `Inspector: ${c.Inspector || c.Inspector || 'S/D'} | Estado: ${c.Estado_Disp}`
+                });
+            });
+
+            dataManto.forEach(m => {
+                const tipo = String(m.Tipo_Movimiento).toUpperCase();
+                const actName = tipo === 'SALIDA' ? 'Salida a Taller' : 'Ingreso de Taller';
+                const det = tipo === 'SALIDA' ? `A: ${m.Proveedor} | Motivo: ${m.Motivo_Trabajo}` : `De: ${m.Proveedor} | Carga Vto: ${m.Nuevo_Vto_Carga || 'S/D'}`;
+                todosLosMovimientos.push({
+                    timestamp: safeParseDate(m.Timestamp),
+                    action: actName,
+                    extinguisher: `EXT: ${m.N_Interno || ''}`,
+                    detail: det
+                });
+            });
+
+            dataBaja.forEach(b => {
+                todosLosMovimientos.push({
+                    timestamp: safeParseDate(b.Timestamp),
+                    action: 'Baja del equipo',
+                    extinguisher: `EXT: ${b.N_Interno || ''}`,
+                    detail: `Destino: ${b.Destino}`
+                });
+            });
+
+            // Ordenar por fecha descendente y tomar los 5 más recientes
+            todosLosMovimientos.sort((x, y) => y.timestamp.getTime() - x.timestamp.getTime());
+            const ultimosMovimientos = todosLosMovimientos.slice(0, 5).map(mov => ({
+                action: mov.action,
+                extinguisher: mov.extinguisher,
+                detail: mov.detail,
+                time: mov.timestamp.getTime() > 0 ? Utilities.formatDate(mov.timestamp, spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy") : 'N/A'
+            }));
 
             // 4. Calcular Estadísticas Básicas en el Servidor
             let operativos = 0;
@@ -340,7 +416,8 @@ function doPost(e) {
                 },
                 "items": finalItems,
                 "proveedores": proveedores,
-                "correos": correos
+                "correos": correos,
+                "movimientos": ultimosMovimientos
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
@@ -900,21 +977,37 @@ function checkVencimientosYEnviarCorreo() {
         const equipos = new Map();
 
         dataAlta.forEach(a => {
-            const id = String(a.N_Interno || a.N_Recipiente).trim();
-            equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
+            const id = String(a.N_Recipiente || a.N_Interno || "").trim();
+            if (id) {
+                equipos.set(id, { ...a, Ultimo_Movimiento: safeParseDate(a.Timestamp) });
+            }
         });
+
+        const findEquipo = (idStr) => {
+            const search = String(idStr || "").trim().toLowerCase();
+            if (!search) return null;
+            if (equipos.has(search)) return equipos.get(search);
+            for (let eq of equipos.values()) {
+                if ((eq.N_Interno && String(eq.N_Interno).trim().toLowerCase() === search) || 
+                    (eq.N_Recipiente && String(eq.N_Recipiente).trim().toLowerCase() === search)) {
+                    return eq;
+                }
+            }
+            return null;
+        };
 
         dataChecklist.forEach(c => {
             const id = String(c.N_Interno || c.N_Recipiente).trim();
             const ts = safeParseDate(c.Timestamp);
-            if (equipos.has(id)) {
-                let eq = equipos.get(id);
+            const eq = findEquipo(id);
+            if (eq) {
                 if (ts > eq.Ultimo_Movimiento) {
                     eq.Estado_Disp = c.Estado_Disp;
                     eq.Ubicacion = c.Ubicacion;
                     eq.Vto_Carga = c.Vto_Carga;
                     eq.Ultimo_Movimiento = ts;
-                    equipos.set(id, eq);
+                    const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                    equipos.set(key, eq);
                 }
             }
         });
@@ -922,8 +1015,8 @@ function checkVencimientosYEnviarCorreo() {
         dataManto.forEach(m => {
             const id = String(m.N_Interno || m.N_Recipiente).trim();
             const ts = safeParseDate(m.Timestamp);
-            if (equipos.has(id)) {
-                let eq = equipos.get(id);
+            const eq = findEquipo(id);
+            if (eq) {
                 if (ts >= eq.Ultimo_Movimiento) {
                     const tipo = String(m.Tipo_Movimiento).toUpperCase();
                     if (tipo === 'SALIDA') {
@@ -934,7 +1027,8 @@ function checkVencimientosYEnviarCorreo() {
                         if (m.Nuevo_Vto_PH) eq.Vto_PH = m.Nuevo_Vto_PH;
                     }
                     eq.Ultimo_Movimiento = ts;
-                    equipos.set(id, eq);
+                    const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                    equipos.set(key, eq);
                 }
             }
         });
@@ -942,12 +1036,13 @@ function checkVencimientosYEnviarCorreo() {
         dataBaja.forEach(b => {
             const id = String(b.N_Interno || b.N_Recipiente).trim();
             const ts = safeParseDate(b.Timestamp);
-            if (equipos.has(id)) {
-                let eq = equipos.get(id);
+            const eq = findEquipo(id);
+            if (eq) {
                 if (ts >= eq.Ultimo_Movimiento) {
                     eq.Estado_Disp = `Baja: ${b.Destino}`;
                     eq.Ultimo_Movimiento = ts;
-                    equipos.set(id, eq);
+                    const key = String(eq.N_Recipiente || eq.N_Interno).trim();
+                    equipos.set(key, eq);
                 }
             }
         });
