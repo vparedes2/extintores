@@ -114,11 +114,12 @@ function doPost(e) {
                 timestamp, 'INGRESO', data.extintorId, data.fecha, data.proveedor, data.trabajos, data.observaciones, data.remito, data.responsable, clCarga, clPH, chkVis
             ]);
         } else if (action === 'get_current_state') {
-            const normalizeKey = (rawHeader) => {
+            const normalizeKey = (rawHeader, index) => {
                 const h = String(rawHeader).toLowerCase().trim();
                 const clean = h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
-                if (clean.includes('time') || clean.includes('fecha') || clean.includes('marca')) return 'Timestamp';
+                if (index === 0) return 'Timestamp';
+                if (clean.includes('time') || clean.includes('marca')) return 'Timestamp';
                 if (clean.includes('interno')) return 'N_Interno';
                 if (clean.includes('recipiente') || clean.includes('fabrica')) return 'N_Recipiente';
                 if (clean.includes('ubicacion') || clean.includes('locacion') || clean.includes('sector')) return 'Ubicacion';
@@ -926,10 +927,11 @@ function checkVencimientosYEnviarCorreo() {
         };
 
         // 2. Extraer estado de todo el inventario (Lógica local simplificada)
-        const normalizeKey = (rawHeader) => {
+        const normalizeKey = (rawHeader, index) => {
             const h = String(rawHeader).toLowerCase().trim();
             const clean = h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-            if (clean.includes('time') || clean.includes('fecha') || clean.includes('marca')) return 'Timestamp';
+            if (index === 0) return 'Timestamp';
+            if (clean.includes('time') || clean.includes('marca')) return 'Timestamp';
             if (clean.includes('interno')) return 'N_Interno';
             if (clean.includes('recipiente') || clean.includes('fabrica')) return 'N_Recipiente';
             if (clean.includes('ubicacion') || clean.includes('locacion') || clean.includes('sector')) return 'Ubicacion';
