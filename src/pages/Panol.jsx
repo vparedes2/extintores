@@ -185,6 +185,7 @@ export default function Panol() {
                     </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <select
                             value={remitoData.proveedor}
                             onChange={(e) => {
@@ -203,25 +204,46 @@ export default function Panol() {
                             ))}
                             <option value="__NEW__" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>＋ Agregar Nuevo Proveedor...</option>
                         </select>
-                    <input
-                        type="text"
-                        placeholder="Motivo General (Ej. Recarga)"
-                        value={remitoData.motivo}
-                        onChange={(e) => setRemitoData({ ...remitoData, motivo: e.target.value })}
-                        style={{ margin: 0 }}
-                    />
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Selecciona el taller o empresa externa que realizará el mantenimiento. Puedes registrar nuevos proveedores desde la lista.
+                            </span>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                            type="text"
+                            placeholder="Motivo General (Ej. Recarga)"
+                            value={remitoData.motivo}
+                            onChange={(e) => setRemitoData({ ...remitoData, motivo: e.target.value })}
+                            style={{ margin: 0, width: '100%' }}
+                        />
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Motivo o trabajo a realizar (por ejemplo: Recarga Anual, Prueba Hidráulica, Reparación de válvula).
+                             </span>
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                    <div style={{ position: 'relative', flex: 1 }}>
+                    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                         <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         <input
                             type="text"
                             placeholder="Buscar por Nº Fábrica (ej. 794074) p/ filtrar el remito..."
-                            style={{ paddingLeft: '2.8rem', margin: 0 }}
+                            style={{ paddingLeft: '2.8rem', margin: 0, width: '100%' }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
+                        <div className="tooltip-container" style={{ marginLeft: '0.5rem' }}>
+                            <HelpCircle className="tooltip-icon" />
+                            <span className="tooltip-text">
+                                Filtra la lista de extintores por número de recipiente o ubicación. Los extintores que queden filtrados serán los únicos que se incluyan en el remito exportado.
+                            </span>
+                        </div>
                     </div>
                     <button className="btn" onClick={handleGenerateRemito} disabled={downloading || filteredList.length === 0} style={{ width: 'auto', padding: '0.8rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--danger)' }}>
                         {downloading ? <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: 'white' }}></div> : <Download size={20} />}

@@ -324,13 +324,14 @@ function doPost(e) {
                 });
             });
 
-            // Ordenar por fecha descendente y tomar los 5 más recientes
+            // Ordenar por fecha descendente y tomar los 10 más recientes
             todosLosMovimientos.sort((x, y) => y.timestamp.getTime() - x.timestamp.getTime());
-            const ultimosMovimientos = todosLosMovimientos.slice(0, 5).map(mov => ({
+            const ultimosMovimientos = todosLosMovimientos.slice(0, 10).map(mov => ({
                 action: mov.action,
                 extinguisher: mov.extinguisher,
                 detail: mov.detail,
-                time: mov.timestamp.getTime() > 0 ? Utilities.formatDate(mov.timestamp, spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy") : 'N/A'
+                time: mov.timestamp.getTime() > 0 ? Utilities.formatDate(mov.timestamp, spreadsheet.getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm") : 'N/A',
+                timestamp: mov.timestamp.getTime()
             }));
 
             // 4. Calcular Estadísticas Básicas en el Servidor

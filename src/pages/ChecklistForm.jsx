@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckSquare, MapPin } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { CheckSquare, MapPin, HelpCircle } from 'lucide-react';
 import { sendToSheet, fetchExtintores, fetchAppStateWithCache } from '../services/api';
 
 export default function ChecklistForm() {
-    const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
     const inputRef = useRef(null);
@@ -193,7 +192,7 @@ export default function ChecklistForm() {
             // navigate('/');
             setFormData(prev => ({ ...prev, extintorId: '', nRecipiente: '' }));
             if(inputRef.current) inputRef.current.focus();
-        } catch (error) {
+        } catch (_) {
             alert('Error de conexión con la hoja de cálculo');
         } finally {
             setLoading(false);
@@ -225,7 +224,13 @@ export default function ChecklistForm() {
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador (Nº Fábrica o Nº Interno)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ margin: 0, fontSize: '0.875rem' }}>Identificador (Nº Fábrica o Nº Interno)</label>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">Ingresa el código interno o el número grabado de fábrica para ubicar el extintor.</span>
+                                </div>
+                            </div>
                             <input 
                                 ref={inputRef}
                                 required 
@@ -242,7 +247,13 @@ export default function ChecklistForm() {
                         </div>
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Ubicación Exacta / GPS</label>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ margin: 0, fontSize: '0.875rem' }}>Ubicación Exacta / GPS</label>
+                            <div className="tooltip-container">
+                                <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                <span className="tooltip-text">Lugar exacto del equipo. Puedes pulsar el botón de GPS para capturar tus coordenadas actuales.</span>
+                            </div>
+                        </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <input required name="ubicacion" value={formData.ubicacion} onChange={handleChange} placeholder="Sector o coordenadas GPS..." style={{ flex: 1, margin: 0 }} />
                             <button type="button" onClick={getGPS} className="btn btn-secondary" style={{ width: 'auto', padding: '0 1rem' }}>
@@ -251,7 +262,13 @@ export default function ChecklistForm() {
                         </div>
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Estado de Disponibilidad</label>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ margin: 0, fontSize: '0.875rem' }}>Estado de Disponibilidad</label>
+                            <div className="tooltip-container">
+                                <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                <span className="tooltip-text">Estado en el que quedará el extintor tras esta inspección.</span>
+                            </div>
+                        </div>
                         <select required name="estadoDisponibilidad" value={formData.estadoDisponibilidad} onChange={handleChange}>
                             <option value="">Selecciona...</option>
                             <option value="Disponible">Disponible (Base/Acopio)</option>
@@ -262,11 +279,23 @@ export default function ChecklistForm() {
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Fecha</label>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ margin: 0, fontSize: '0.875rem' }}>Fecha</label>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">Fecha en que se realiza la inspección.</span>
+                                </div>
+                            </div>
                             <input required type="date" name="fecha" value={formData.fecha} onChange={handleChange} />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Inspector</label>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ margin: 0, fontSize: '0.875rem' }}>Inspector</label>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">Nombre de la persona que realiza el control visual del equipo.</span>
+                                </div>
+                            </div>
                             <input required name="inspecciono" value={formData.inspecciono} onChange={handleChange} placeholder="Tu nombre..." />
                         </div>
                     </div>
@@ -276,16 +305,34 @@ export default function ChecklistForm() {
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento PH (Año)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ margin: 0, fontSize: '0.875rem' }}>Vencimiento PH (Año)</label>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">Verifica en la etiqueta del cilindro el año de la próxima Prueba Hidráulica.</span>
+                                </div>
+                            </div>
                             <input required type="number" name="vencimientoPH" value={formData.vencimientoPH} onChange={handleChange} placeholder="Ej. 2029" min="2000" max="2100" />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Vencimiento Carga (Mes/Año)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ margin: 0, fontSize: '0.875rem' }}>Vencimiento Carga (Mes/Año)</label>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">Verifica el mes/año de vencimiento impreso en el anillo plástico o la tarjeta de control.</span>
+                                </div>
+                            </div>
                             <input required type="month" name="vtoCarga" value={formData.vtoCarga} onChange={handleChange} />
                         </div>
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Capacidad (kg)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ margin: 0, fontSize: '0.875rem' }}>Capacidad (kg)</label>
+                            <div className="tooltip-container">
+                                <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                <span className="tooltip-text">Capacidad total en kilogramos indicada en la etiqueta metálica del equipo.</span>
+                            </div>
+                        </div>
                         <select required name="capacidad" value={formData.capacidad} onChange={handleChange}>
                             <option value="">Selecciona capacidad...</option>
                             <option value="1">1 kg</option>

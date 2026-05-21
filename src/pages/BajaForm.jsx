@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertTriangle, Send } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { AlertTriangle, Send, HelpCircle } from 'lucide-react';
 import { sendToSheet, fetchExtintores } from '../services/api';
 
 export default function BajaForm() {
-    const navigate = useNavigate();
     const location = useLocation();
     const [loading, setLoading] = useState(false);
     const inputRef = useRef(null);
@@ -58,7 +57,7 @@ export default function BajaForm() {
             // navigate('/');
             setFormData({ ...formData, extintorId: '' });
             if(inputRef.current) inputRef.current.focus();
-        } catch (error) {
+        } catch (_) {
             alert('Hubo un error al registrar el movimiento.');
         } finally {
             setLoading(false);
@@ -82,12 +81,24 @@ export default function BajaForm() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica o Nº Interno)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0, fontSize: '0.875rem' }}>Identificador del Equipo (Nº Fábrica o Nº Interno)</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                            <span className="tooltip-text">Ingresa el código interno o el número grabado de fábrica para ubicar el extintor.</span>
+                        </div>
+                    </div>
                     <input ref={inputRef} required name="extintorId" value={formData.extintorId} onChange={handleChange} placeholder="Ej. 794074 o 6" />
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Tipo de Baja</label>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0, fontSize: '0.875rem' }}>Tipo de Baja</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                            <span className="tooltip-text">Selecciona el motivo de retiro del equipo (Baja definitiva, robo, pérdida, vaciado).</span>
+                        </div>
+                    </div>
                     <select required name="destino" value={formData.destino} onChange={handleChange}>
                         <option value="Baja Definitiva (Rotura/Descarte)">Baja Definitiva (Rotura / Vida útil vencida)</option>
                         <option value="Robo / Extravío">Robo / Extravío</option>
@@ -96,7 +107,13 @@ export default function BajaForm() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Motivo / Observaciones (Opcional)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ margin: 0, fontSize: '0.875rem' }}>Motivo / Observaciones (Opcional)</label>
+                        <div className="tooltip-container">
+                            <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                            <span className="tooltip-text">Detalle adicional sobre el incidente, estado físico o reporte de siniestro.</span>
+                        </div>
+                    </div>
                     <textarea
                         name="observaciones"
                         value={formData.observaciones}

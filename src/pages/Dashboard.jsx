@@ -10,13 +10,13 @@ export default function Dashboard() {
         { id: '1', action: 'Visualización Activa', extinguisher: 'Esperando registros...', time: 'Ahora' }
     ]);
 
-    // Fallback inicial
+    // Fallback inicial con tooltips
     const [stats, setStats] = useState([
-        { label: 'Total Registrados', value: 0, icon: <PackageSearch size={24} />, color: '#3b82f6' },
-        { label: 'Operativos O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981' },
-        { label: 'Pendientes (Base)', value: 0, icon: <Layers size={24} />, color: '#f59e0b' },
-        { label: 'En Taller (Afuera)', value: 0, icon: <Wrench size={24} />, color: '#6366f1' },
-        { label: 'Vencidos/Baja', value: 0, icon: <ShieldAlert size={24} />, color: '#ef4444' }
+        { label: 'Total Registrados', value: 0, icon: <PackageSearch size={24} />, color: '#3b82f6', tooltip: 'Cantidad total de extintores registrados en el sistema.' },
+        { label: 'Operativos O.K.', value: 0, icon: <ShieldCheck size={24} />, color: '#10b981', tooltip: 'Extintores vigentes (carga y PH al día) asignados a locaciones operativas.' },
+        { label: 'Pendientes (Base)', value: 0, icon: <Layers size={24} />, color: '#f59e0b', tooltip: 'Extintores en Base Neuquén que necesitan recarga, mantenimiento o prueba hidráulica.' },
+        { label: 'En Taller (Afuera)', value: 0, icon: <Wrench size={24} />, color: '#6366f1', tooltip: 'Extintores despachados y en proceso de mantenimiento en un taller externo.' },
+        { label: 'Vencidos / Baja', value: 0, icon: <ShieldAlert size={24} />, color: '#ef4444', tooltip: 'Equipos dados de baja de manera definitiva o que ya alcanzaron su vida útil (20 años).' }
     ]);
 
     useEffect(() => {
@@ -25,26 +25,36 @@ export default function Dashboard() {
                 setExtintoresReales(json.items || []);
                 const st = json.stats || { total: 0, operativos: 0, reparacion: 0, vencidos: 0, pendientes: 0 };
                 setStats([
-                    { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6' },
-                    { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981' },
-                    { label: 'Pendientes (Base)', value: st.pendientes || 0, icon: <Layers size={24} />, color: '#f59e0b' },
-                    { label: 'En Taller (Afuera)', value: st.reparacion || 0, icon: <Wrench size={24} />, color: '#6366f1' },
-                    { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444' }
+                    { label: 'Total Registrados', value: st.total, icon: <PackageSearch size={24} />, color: '#3b82f6', tooltip: 'Cantidad total de extintores registrados en el sistema.' },
+                    { label: 'Operativos O.K.', value: st.operativos, icon: <ShieldCheck size={24} />, color: '#10b981', tooltip: 'Extintores vigentes (carga y PH al día) asignados a locaciones operativas.' },
+                    { label: 'Pendientes (Base)', value: st.pendientes || 0, icon: <Layers size={24} />, color: '#f59e0b', tooltip: 'Extintores en Base Neuquén que necesitan recarga, mantenimiento o prueba hidráulica.' },
+                    { label: 'En Taller (Afuera)', value: st.reparacion || 0, icon: <Wrench size={24} />, color: '#6366f1', tooltip: 'Extintores despachados y en proceso de mantenimiento en un taller externo.' },
+                    { label: 'Vencidos / Baja', value: st.vencidos, icon: <ShieldAlert size={24} />, color: '#ef4444', tooltip: 'Equipos dados de baja de manera definitiva o que ya alcanzaron su vida útil (20 años).' }
                 ]);
 
                 if (json.movimientos && json.movimientos.length > 0) {
-                    setRecentActivity(json.movimientos.map((m, idx) => ({
+                    // Ordenar por timestamp descendente en frontend por seguridad
+                    const sortedMovs = json.movimientos
+                        .slice()
+                        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                    setRecentActivity(sortedMovs.map((m, idx) => ({
                         id: String(idx),
                         action: m.action,
                         extinguisher: `${m.extinguisher} - ${m.detail}`,
                         time: m.time
                     })));
                 } else if (json.items && json.items.length > 0) {
-                    setRecentActivity(json.items.slice(-3).reverse().map((ext, idx) => ({
+                    // Ordenar fallback por Timestamp descendente y tomar los 5 más nuevos
+                    const sortedItems = json.items
+                        .slice()
+                        .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
+
+                    setRecentActivity(sortedItems.slice(0, 5).map((ext, idx) => ({
                         id: String(idx),
                         action: 'Registro en sistema',
                         extinguisher: `EXT: ${ext.N_Interno} - ${ext.Estado_Disp || 'S/D'}`,
-                        time: new Date(ext.Timestamp).toLocaleDateString()
+                        time: new Date(ext.Timestamp).toLocaleString()
                     })));
                 }
                 setLoading(false);
@@ -75,10 +85,16 @@ export default function Dashboard() {
 
             <section className="grid-stats">
                 {stats.map((stat, i) => (
-                    <div key={i} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div key={i} className="glass-card animate-scale-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ color: stat.color }}>{stat.icon}</span>
-                            <h3 style={{ fontSize: '1.5rem', margin: 0 }}>{stat.value}</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <h3 style={{ fontSize: '1.5rem', margin: 0 }}>{stat.value}</h3>
+                                <div className="tooltip-container">
+                                    <HelpCircle className="tooltip-icon" style={{ width: '13px', height: '13px' }} />
+                                    <span className="tooltip-text">{stat.tooltip}</span>
+                                </div>
+                            </div>
                         </div>
                         <p style={{ fontSize: '0.875rem', margin: 0, color: 'var(--text-main)' }}>{stat.label}</p>
                     </div>
@@ -161,9 +177,17 @@ export default function Dashboard() {
             </section>
 
             <section className="glass-card" style={{ marginBottom: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                    Resumen por Ubicación (Operativos)
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>
+                        Resumen por Ubicación (Operativos)
+                    </h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Detalla cuántos equipos vigentes y aptos para su uso se encuentran asignados en cada sector o base.
+                        </span>
+                    </div>
+                </div>
                 {loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
                         <Loader className="spin" size={24} color="var(--primary)" />
@@ -195,9 +219,17 @@ export default function Dashboard() {
             </section>
 
             <section className="glass-card">
-                <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
-                    Lista de Equipos Operativos
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>
+                        Lista de Equipos Operativos
+                    </h3>
+                    <div className="tooltip-container">
+                        <HelpCircle className="tooltip-icon" />
+                        <span className="tooltip-text">
+                            Visualiza el listado detallado de cada extintor que se encuentra en estado Operativo u Afectado a Locación.
+                        </span>
+                    </div>
+                </div>
                 {loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
                         <Loader className="spin" size={32} color="var(--primary)" />
