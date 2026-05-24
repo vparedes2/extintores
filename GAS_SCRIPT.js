@@ -413,20 +413,28 @@ function doPost(e) {
                 const formattedFecha = rawDate.getTime() > 0 ? Utilities.formatDate(rawDate, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd") : 'S/D';
                 const inspectorStr = String(c.Inspector || c.inspector || 'S/D').trim();
                 
-                const key = `${formattedFecha}|${inspectorStr}`;
+                const key = formattedFecha;
                 if (!checklistMap[key]) {
                     checklistMap[key] = {
                         fecha: formattedFecha,
-                        inspector: inspectorStr,
+                        inspectores: [],
                         cantidad: 0
                     };
+                }
+                if (checklistMap[key].inspectores.indexOf(inspectorStr) === -1) {
+                    checklistMap[key].inspectores.push(inspectorStr);
                 }
                 checklistMap[key].cantidad += 1;
             });
             
             const checklistsResumidos = [];
             for (let k in checklistMap) {
-                checklistsResumidos.push(checklistMap[k]);
+                const item = checklistMap[k];
+                checklistsResumidos.push({
+                    fecha: item.fecha,
+                    inspector: item.inspectores.join(', '),
+                    cantidad: item.cantidad
+                });
             }
             checklistsResumidos.sort((x, y) => {
                 return new Date(y.fecha) - new Date(x.fecha);
