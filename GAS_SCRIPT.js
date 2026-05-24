@@ -409,15 +409,9 @@ function doPost(e) {
             // == RESUMEN DE CHECKLISTS REALIZADOS ==
             let checklistMap = {};
             dataChecklist.forEach(c => {
-                const rawDate = safeParseDate(c.Timestamp);
-                const fechaStr = c.Fecha ? String(c.Fecha).trim() : (rawDate.getTime() > 0 ? Utilities.formatDate(rawDate, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd") : 'S/D');
+                const rawDate = safeParseDate(c.Fecha || c.Timestamp);
+                const formattedFecha = rawDate.getTime() > 0 ? Utilities.formatDate(rawDate, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd") : 'S/D';
                 const inspectorStr = String(c.Inspector || c.inspector || 'S/D').trim();
-                
-                let formattedFecha = fechaStr;
-                const latam = fechaStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-                if (latam) {
-                    formattedFecha = `${latam[3]}-${latam[2].padStart(2, '0')}-${latam[1].padStart(2, '0')}`;
-                }
                 
                 const key = `${formattedFecha}|${inspectorStr}`;
                 if (!checklistMap[key]) {
@@ -589,11 +583,27 @@ function doPost(e) {
         } else if (action === 'export_pdf') {
             // == LOGICA DE GENERACION DE PDF ==
             const targetDateStr = data.fecha; // ej. "2026-02-25"
-            // Calcular proxima inspeccion (exactamente 30 días físicos después)
-            let parts = targetDateStr.split('-');
-            let y = parseInt(parts[0], 10);
-            let m = parseInt(parts[1], 10);
-            let d = parseInt(parts[2], 10);
+            
+            let y, m, d;
+            const parts = String(targetDateStr).split('-');
+            if (parts.length === 3 && !String(targetDateStr).includes('GMT')) {
+                y = parseInt(parts[0], 10);
+                m = parseInt(parts[1], 10);
+                d = parseInt(parts[2], 10);
+            } else {
+                const parsed = new Date(targetDateStr);
+                y = parsed.getFullYear();
+                m = parsed.getMonth() + 1;
+                d = parsed.getDate();
+            }
+            
+            // Fallback si falla
+            if (isNaN(y) || isNaN(m) || isNaN(d)) {
+                const today = new Date();
+                y = today.getFullYear();
+                m = today.getMonth() + 1;
+                d = today.getDate();
+            }
             
             let nextDateObj = new Date(y, m - 1, d); // Inicializar en fecha actual (mes es 0-indexed)
             nextDateObj.setDate(nextDateObj.getDate() + 30); // Añadir 30 días físicos
