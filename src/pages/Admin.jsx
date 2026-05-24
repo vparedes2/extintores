@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Trash2, Calendar, User, FileText, CheckCircle, AlertTriangle, LogOut, Loader, Search, RefreshCw, Key } from 'lucide-react';
+import { Lock, Trash2, Calendar, User, FileText, AlertTriangle, LogOut, Loader, Search, RefreshCw, Eye } from 'lucide-react';
 import { fetchAppStateWithCache, sendToSheet } from '../services/api';
 
 export default function Admin() {
@@ -8,11 +8,8 @@ export default function Admin() {
         const saved = localStorage.getItem('admin_user');
         return saved ? JSON.parse(saved) : null;
     });
-    const [clientId, setClientId] = useState(() => {
-        return localStorage.getItem('google_client_id') || '';
-    });
-    const [clientIdInput, setClientIdInput] = useState('');
-    const [showKeyInput, setShowKeyInput] = useState(false);
+    const [passcode, setPasscode] = useState('');
+    const [loginError, setLoginError] = useState('');
 
     // App Data State
     const [items, setItems] = useState([]);
@@ -22,103 +19,34 @@ export default function Admin() {
 
     // Deletion Form State
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedExtId, setSelectedExtId] = useState('');
-    const [deleting, setDeleting] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     // Checklist PDF State
     const [generatingPdf, setGeneratingPdf] = useState(false);
-    const [activeChecklistPdf, setActiveChecklistPdf] = useState(null); // { url, date }
+    const [activeChecklistPdf, setActiveChecklistPdf] = useState(null); // { url, date, inspector }
 
-    // Load google client script dynamically
-    useEffect(() => {
-        if (!clientId) return;
-        
-        const loadGoogleScript = () => {
-            if (window.google) {
-                initGoogleSignIn();
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.async = true;
-            script.defer = true;
-            script.onload = initGoogleSignIn;
-            document.head.appendChild(script);
-        };
-
-        loadGoogleScript();
-    }, [clientId]);
-
-    const initGoogleSignIn = () => {
-        if (!window.google) return;
-        try {
-            window.google.accounts.id.initialize({
-                client_id: clientId,
-                callback: handleGoogleResponse,
-                auto_select: false
-            });
-            window.google.accounts.id.renderButton(
-                document.getElementById('googleBtnParent'),
-                { theme: 'outline', size: 'large', text: 'signin_with' }
-            );
-        } catch (err) {
-            console.error('Google Sign-In Init Error:', err);
-        }
-    };
-
-    const handleGoogleResponse = (response) => {
-        const credential = response.credential;
-        if (!credential) return;
-
-        // Decode JWT
-        try {
-            const base64Url = credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
-            
-            const email = String(payload.email || '').trim().toLowerCase();
-            const name = payload.name || 'Usuario Google';
-
-            if (email === 'vparedes2@gmail.com') {
-                const loggedInUser = { email, token: credential, name };
-                setUser(loggedInUser);
-                localStorage.setItem('admin_user', JSON.stringify(loggedInUser));
-            } else {
-                alert(`Acceso denegado: El correo ${email} no está autorizado para administrar.`);
-            }
-        } catch (e) {
-            console.error('Error al decodificar credenciales:', e);
-            alert('Error al iniciar sesión con Google.');
-        }
-    };
-
-    const handleSaveClientId = (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
-        if (!clientIdInput.trim()) return;
-        localStorage.setItem('google_client_id', clientIdInput.trim());
-        setClientId(clientIdInput.trim());
-        setShowKeyInput(false);
-        alert('Google Client ID guardado. Recargando autenticador...');
-    };
-
-    const handleDevBypass = () => {
-        const loggedInUser = { 
-            email: 'vparedes2@gmail.com', 
-            token: 'dev-bypass-vparedes2', 
-            name: 'Victor Paredes (Simulado)' 
-        };
-        setUser(loggedInUser);
-        localStorage.setItem('admin_user', JSON.stringify(loggedInUser));
+        if (passcode.trim() === '1977') {
+            const loggedInUser = { 
+                email: 'vparedes2@gmail.com', 
+                token: '1977', 
+                name: 'Administrador Principal' 
+            };
+            setUser(loggedInUser);
+            localStorage.setItem('admin_user', JSON.stringify(loggedInUser));
+            setLoginError('');
+            setPasscode('');
+        } else {
+            setLoginError('Clave incorrecta. Inténtalo de nuevo.');
+        }
     };
 
     const handleLogout = () => {
         setUser(null);
         localStorage.removeItem('admin_user');
-        setSelectedExtId('');
-        // Clean Google credentials cookie if loaded
-        if (window.google) {
-            window.google.accounts.id.disableAutoSelect();
-        }
+        setSearchQuery('');
+        setActiveChecklistPdf(null);
     };
 
     // Load Extinguishers list and Checklist history
@@ -152,26 +80,23 @@ export default function Admin() {
     }, [user]);
 
     // Handle Deletion
-    const handleDelete = async () => {
-        if (!selectedExtId) return;
-        const ext = items.find(e => e.N_Recipiente === selectedExtId || e.N_Interno === selectedExtId);
-        if (!ext) return;
+    const handleDelete = async (ext) => {
+        const extId = ext.N_Recipiente || ext.N_Interno;
+        if (!extId) return;
 
-        const confirmMsg = `¿ESTÁS ABSOLUTAMENTE SEGURO?\n\nSe eliminará de la base el extintor:\nNº Interno: ${ext.N_Interno || 'S/D'}\nNº Recipiente: ${ext.N_Recipiente || 'S/D'}\n\nEsto borrará permanentemente sus registros de ALTA, CHECKLIST, MANTENIMIENTO y BAJA asociados. Esta acción no se puede deshacer.`;
+        const confirmMsg = `¿ESTÁS ABSOLUTAMENTE SEGURO?\n\nSe eliminará permanentemente de la base el extintor:\nNº Interno: ${ext.N_Interno || 'S/D'}\nNº Recipiente: ${ext.N_Recipiente || 'S/D'}\nUbicación: ${ext.Ubicacion || 'S/D'}\n\nEsto borrará permanentemente sus registros de ALTA, CHECKLIST, MANTENIMIENTO y BAJA asociados en Google Sheets. Esta acción no se puede deshacer.`;
         if (!window.confirm(confirmMsg)) return;
 
-        setDeleting(true);
+        setDeletingId(extId);
         try {
             const res = await sendToSheet({
                 action: 'delete_equipo',
-                extId: selectedExtId,
+                extId: extId,
                 token: user.token
             });
 
             if (res && res.status === 'success') {
                 alert(res.message || 'Extintor eliminado correctamente.');
-                setSelectedExtId('');
-                setSearchQuery('');
                 // Forzar recarga del estado fresco
                 await loadState();
             } else {
@@ -181,7 +106,7 @@ export default function Admin() {
             console.error(error);
             alert('Error de red al intentar eliminar el extintor.');
         } finally {
-            setDeleting(false);
+            setDeletingId(null);
         }
     };
 
@@ -222,108 +147,62 @@ export default function Admin() {
         }
     };
 
-    // Filtering inventory for delete autocomplete
+    // Filtering inventory
     const filteredItems = items.filter(e => {
         const query = searchQuery.toLowerCase().trim();
-        if (!query) return false; // Show none if empty query
+        if (!query) return true; // Show all if query is empty
         const intId = String(e.N_Interno || '').toLowerCase();
         const recId = String(e.N_Recipiente || '').toLowerCase();
         const loc = String(e.Ubicacion || '').toLowerCase();
         return intId.includes(query) || recId.includes(query) || loc.includes(query);
     });
 
-    const selectedExt = items.find(e => e.N_Recipiente === selectedExtId || e.N_Interno === selectedExtId);
-
     // Auth screen layout
     if (!user) {
         return (
             <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
                 <header style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                    <h2>Administración de Sistema</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>Acceso restringido para depuración de base de datos.</p>
+                    <h2>Acceso de Administración</h2>
+                    <p style={{ color: 'var(--text-muted)' }}>Ingresa la clave autorizada para depurar y ver registros.</p>
                 </header>
 
-                <div className="glass-card login-container">
+                <div className="glass-card login-container" style={{ padding: '2rem', borderRadius: '12px' }}>
                     <Lock size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
                     
-                    {!clientId ? (
-                        <div style={{ width: '100%', textAlign: 'center' }}>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                                Para habilitar el inicio de sesión de Google, ingresa tu Client ID de Google Cloud.
-                            </p>
-                            <form onSubmit={handleSaveClientId} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <input
-                                    type="text"
-                                    placeholder="Google Client ID (.apps.googleusercontent.com)"
-                                    value={clientIdInput}
-                                    onChange={e => setClientIdInput(e.target.value)}
-                                    required
-                                    style={{ width: '100%' }}
-                                />
-                                <button type="submit" className="btn btn-primary">
-                                    <Key size={18} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: '-3px' }} />
-                                    Guardar Client ID
-                                </button>
-                            </form>
-                            <div style={{ margin: '1.5rem 0', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>¿En entorno de desarrollo local?</p>
-                                <button onClick={handleDevBypass} className="btn btn-secondary" style={{ width: '100%' }}>
-                                    Entrar en Modo Simulado (Dev)
-                                </button>
-                            </div>
+                    <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Clave de Acceso</label>
+                            <input
+                                type="password"
+                                placeholder="Escribe la clave de 4 dígitos"
+                                value={passcode}
+                                onChange={e => setPasscode(e.target.value)}
+                                required
+                                style={{ width: '100%', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.2rem' }}
+                            />
                         </div>
-                    ) : (
-                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-                            <div id="googleBtnParent" style={{ minHeight: '40px' }}></div>
-                            
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '1rem' }}>
-                                Autorizado únicamente para el correo <strong style={{ color: 'var(--text-main)' }}>vparedes2@gmail.com</strong>
-                            </p>
 
-                            <div style={{ width: '100%', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <button onClick={() => setShowKeyInput(!showKeyInput)} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.5rem' }}>
-                                    {showKeyInput ? 'Ocultar ajustes' : '🔑 Cambiar Google Client ID / Usar Bypass'}
-                                </button>
-                                
-                                {showKeyInput && (
-                                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Ingresa nuevo Client ID"
-                                            value={clientIdInput}
-                                            onChange={e => setClientIdInput(e.target.value)}
-                                            style={{ width: '100%', fontSize: '0.85rem' }}
-                                        />
-                                        <button onClick={handleSaveClientId} className="btn btn-primary" style={{ padding: '0.5rem' }}>
-                                            Guardar
-                                        </button>
-                                        <button onClick={() => {
-                                            localStorage.removeItem('google_client_id');
-                                            setClientId('');
-                                            setShowKeyInput(false);
-                                        }} className="btn btn-secondary" style={{ padding: '0.5rem', color: '#ef4444' }}>
-                                            Quitar Client ID
-                                        </button>
-                                        <button onClick={handleDevBypass} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
-                                            Usar Bypass Local
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                        {loginError && (
+                            <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0, textAlign: 'center' }}>
+                                ⚠️ {loginError}
+                            </p>
+                        )}
+
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                            Ingresar
+                        </button>
+                    </form>
                 </div>
             </div>
         );
     }
 
-    // Panel principal una vez autenticado
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '100px' }}>
             <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                    <h2>Panel de Administración</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>Sesión activa: <b>{user.email}</b> ({user.name})</p>
+                    <h2>Panel de Control (Admin)</h2>
+                    <p style={{ color: 'var(--text-muted)' }}>Administrador: <b>{user.email}</b></p>
                 </div>
                 <button onClick={handleLogout} className="btn btn-secondary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                     <LogOut size={16} /> Cerrar Sesión
@@ -336,153 +215,118 @@ export default function Admin() {
                     onClick={() => { setActiveTab('delete'); setActiveChecklistPdf(null); }}
                 >
                     <Trash2 size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: '-3px' }} />
-                    Depurar Extintores
+                    Depurar Extintores ({items.length})
                 </button>
                 <button 
                     className={`admin-tab ${activeTab === 'checklists' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('checklists'); setActiveChecklistPdf(null); }}
                 >
                     <Calendar size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: '-3px' }} />
-                    Historial de Checklists
+                    Historial de Checklists ({checklists.length})
                 </button>
             </nav>
 
             {loadingData && (
                 <div style={{ textAlign: 'center', padding: '3rem' }}>
                     <Loader className="spin" size={32} color="var(--primary)" style={{ margin: '0 auto' }} />
-                    <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>Sincronizando con Google Sheets...</p>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>Cargando datos en tiempo real de Google Sheets...</p>
                 </div>
             )}
 
-            {/* TAB 1: DEPURACION DE EXTINTORES */}
+            {/* TAB 1: DEPURACION DE EXTINTORES (LISTADO Y BORRADO DIRECTO) */}
             {activeTab === 'delete' && !loadingData && (
                 <section className="glass-card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                         <Trash2 size={24} color="#ef4444" />
-                        <h3 style={{ margin: 0 }}>Eliminar Extintores Definitivamente</h3>
+                        <h3 style={{ margin: 0 }}>Listado y Depuración de Equipos</h3>
                     </div>
 
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                        Utiliza este buscador para localizar el extintor que deseas purgar de la base de datos (por ejemplo, aquellos que se desecharon o perdieron sin dejar registro oficial).
+                        A continuación se listan todos los extintores activos en la base de datos. Puedes usar la barra de búsqueda para filtrar rápidamente y presionar el botón de eliminar si el equipo ya no está en servicio y deseas depurar la base.
                     </p>
 
                     {/* Buscador */}
-                    <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                            <input
-                                type="text"
-                                placeholder="Escribe Nº Interno, Nº Recipiente o Ubicación para buscar..."
-                                value={searchQuery}
-                                onChange={e => {
-                                    setSearchQuery(e.target.value);
-                                    if (selectedExtId) setSelectedExtId('');
-                                }}
-                                style={{ flex: 1 }}
-                            />
-                            {searchQuery && (
-                                <button onClick={() => { setSearchQuery(''); setSelectedExtId(''); }} className="btn btn-secondary" style={{ width: 'auto', margin: 0 }}>
-                                    Limpiar
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Autocomplete List */}
-                        {searchQuery && !selectedExtId && filteredItems.length > 0 && (
-                            <ul style={{
-                                position: 'absolute', top: '100%', left: 0, right: 0,
-                                background: '#1f1f23', border: '1px solid var(--glass-border)',
-                                borderRadius: '8px', zIndex: 50, listStyle: 'none',
-                                padding: 0, margin: '4px 0 0', maxHeight: '200px', overflowY: 'auto',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
-                            }}>
-                                {filteredItems.map((ext, idx) => (
-                                    <li 
-                                        key={idx}
-                                        onClick={() => {
-                                            setSelectedExtId(ext.N_Recipiente || ext.N_Interno);
-                                            setSearchQuery(`EXT: ${ext.N_Interno || 'S/D'} (Rec: ${ext.N_Recipiente || 'S/D'})`);
-                                        }}
-                                        style={{
-                                            padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                                            cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                                            fontSize: '0.875rem'
-                                        }}
-                                        onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.05)'}
-                                        onMouseLeave={e => e.target.style.background = 'transparent'}
-                                    >
-                                        <div>
-                                            <strong>{ext.N_Interno || 'S/N'}</strong>
-                                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Recipiente: {ext.N_Recipiente || 'S/N'}</span>
-                                        </div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📍 {ext.Ubicacion || 'S/D'}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', width: '100%', position: 'relative' }}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Buscar por Nº Interno, Nº Recipiente o Ubicación..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{ flex: 1 }}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="btn btn-secondary" style={{ width: 'auto', margin: 0 }}>
+                                Limpiar
+                            </button>
                         )}
-                        {searchQuery && !selectedExtId && filteredItems.length === 0 && (
-                            <div style={{
-                                position: 'absolute', top: '100%', left: 0, right: 0,
-                                background: '#1f1f23', border: '1px solid var(--glass-border)',
-                                borderRadius: '8px', zIndex: 50, padding: '1rem',
-                                color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center'
-                            }}>
-                                No se encontraron extintores con esa descripción.
-                            </div>
-                        )}
+                        <button onClick={loadState} className="btn btn-secondary" style={{ width: 'auto', margin: 0 }} title="Sincronizar">
+                            <RefreshCw size={18} />
+                        </button>
                     </div>
 
-                    {/* Detalle del Extintor Seleccionado */}
-                    {selectedExt && (
-                        <div className="animate-scale-in" style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                            <h4 style={{ margin: '0 0 1rem', color: 'var(--text-main)' }}>Detalles del Equipo Seleccionado:</h4>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Código Interno:</span> <br/>
-                                    <strong>{selectedExt.N_Interno || 'No asignado'}</strong>
-                                </p>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Código Recipiente / Fábrica:</span> <br/>
-                                    <strong>{selectedExt.N_Recipiente || 'No asignado'}</strong>
-                                </p>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Ubicación:</span> <br/>
-                                    <strong>📍 {selectedExt.Ubicacion || 'S/D'}</strong>
-                                </p>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Agente / Capacidad:</span> <br/>
-                                    <strong>{selectedExt.Agente || 'S/D'} {selectedExt.Capacidad || ''}</strong>
-                                </p>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Disponibilidad / Estado:</span> <br/>
-                                    <strong style={{ color: selectedExt.Estado_Disp?.toLowerCase().includes('disponible') ? 'var(--success)' : '#f59e0b' }}>
-                                        {selectedExt.Estado_Disp || 'S/D'}
-                                    </strong>
-                                </p>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Vencimiento Carga:</span> <br/>
-                                    <strong>📅 {selectedExt.Vto_Carga || 'S/D'}</strong>
-                                </p>
-                            </div>
-
-                            <div className="delete-confirm-box">
-                                <h4 style={{ color: '#ef4444', margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <AlertTriangle size={20} /> ¡Peligro de Borrado Permanente!
-                                </h4>
-                                <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                    Al presionar el botón de abajo, se borrará definitivamente este extintor. El sistema buscará y removerá todas sus referencias históricas en las pestañas ALTA, CHECKLIST, MANTENIMIENTO y BAJA de Google Sheets.
-                                </p>
-
-                                <button 
-                                    onClick={handleDelete}
-                                    disabled={deleting}
-                                    className="btn"
-                                    style={{ background: '#ef4444', color: 'white', border: 'none', width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}
-                                >
-                                    {deleting ? <Loader className="spin" size={18} /> : <Trash2 size={18} />}
-                                    {deleting ? 'Eliminando equipo...' : 'Eliminar Extintor Definitivamente'}
-                                </button>
-                            </div>
+                    {filteredItems.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No se encontraron equipos registrados que coincidan con la búsqueda.
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nº Interno</th>
+                                        <th>Nº Recipiente</th>
+                                        <th>Ubicación</th>
+                                        <th>Agente / Cap.</th>
+                                        <th>Estado</th>
+                                        <th style={{ textAlign: 'center' }}>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredItems.map((ext, idx) => {
+                                        const extId = ext.N_Recipiente || ext.N_Interno;
+                                        const isDeletingThis = deletingId === extId;
+                                        return (
+                                            <tr key={idx}>
+                                                <td><strong>{ext.N_Interno || 'S/N'}</strong></td>
+                                                <td>{ext.N_Recipiente || 'S/N'}</td>
+                                                <td>📍 {ext.Ubicacion || 'S/D'}</td>
+                                                <td>{ext.Agente || 'S/D'} {ext.Capacidad || ''}</td>
+                                                <td>
+                                                    <span style={{ 
+                                                        fontSize: '0.8rem', 
+                                                        color: ext.Estado_Disp?.toLowerCase().includes('disponible') ? 'var(--success)' : '#f59e0b',
+                                                        fontWeight: '600'
+                                                    }}>
+                                                        {ext.Estado_Disp || 'S/D'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <button
+                                                        onClick={() => handleDelete(ext)}
+                                                        disabled={deletingId !== null}
+                                                        className="btn"
+                                                        style={{ 
+                                                            background: 'rgba(239, 68, 68, 0.1)', 
+                                                            color: '#ef4444', 
+                                                            border: '1px solid #ef4444',
+                                                            width: 'auto', 
+                                                            margin: 0, 
+                                                            padding: '0.4rem 0.8rem', 
+                                                            fontSize: '0.8rem', 
+                                                            display: 'inline-flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '0.35rem' 
+                                                        }}
+                                                    >
+                                                        {isDeletingThis ? <Loader className="spin" size={12} /> : <Trash2 size={12} />}
+                                                        {isDeletingThis ? 'Borrando...' : 'Eliminar'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </section>
@@ -498,12 +342,12 @@ export default function Admin() {
                         </div>
 
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                            A continuación se listan las inspecciones de campo agrupadas por fecha e inspector. Haz clic sobre cualquiera de ellas para cargar y obtener su reporte en PDF oficial.
+                            A continuación se listan las inspecciones de campo agrupadas por fecha e inspector. Haz clic en "Ver PDF" para consultar el reporte oficial de todos los realizados en esa fecha.
                         </p>
 
                         {checklists.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                                No se registran inspecciones de checklist aún en el sistema.
+                                No se registran inspecciones de checklist aún. Actualiza la Google App Script en tu planilla para cargar el historial.
                             </div>
                         ) : (
                             <div style={{ overflowX: 'auto' }}>
@@ -539,7 +383,7 @@ export default function Admin() {
                                                         className="btn btn-secondary"
                                                         style={{ width: 'auto', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                                                     >
-                                                        {generatingPdf ? <Loader className="spin" size={12} /> : <FileText size={12} />}
+                                                        {generatingPdf ? <Loader className="spin" size={12} /> : <Eye size={12} />}
                                                         Ver PDF
                                                     </button>
                                                 </td>
