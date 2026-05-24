@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
-import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText, Truck, Settings } from 'lucide-react';
+import { ShieldAlert, ScanLine, FilePlus, LogOut, CheckSquare, FileText, Truck, Settings, Database } from 'lucide-react';
 import './index.css';
 
 import Dashboard from './pages/Dashboard';
@@ -14,6 +14,7 @@ import Panol from './pages/Panol';
 import MantenimientoOut from './pages/MantenimientoOut';
 import MantenimientoIn from './pages/MantenimientoIn';
 import MantenimientoBatchOut from './pages/MantenimientoBatchOut';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -24,9 +25,14 @@ function App() {
             <ShieldAlert color="var(--primary)" size={28} />
             <h1 style={{ margin: 0, fontSize: '1.25rem' }}>FireManager</h1>
           </Link>
-          <Link to="/configuracion" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Configuración de Correos">
-            <Settings size={28} />
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Link to="/admin" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Administración / Depuración">
+              <Database size={26} />
+            </Link>
+            <Link to="/configuracion" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Configuración de Correos">
+              <Settings size={26} />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -43,6 +49,7 @@ function App() {
           <Route path="/mto-in" element={<MantenimientoIn />} />
           <Route path="/mto-batch" element={<MantenimientoBatchOut />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </main>
 

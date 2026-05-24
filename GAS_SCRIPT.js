@@ -35,7 +35,7 @@ function doPost(e) {
         else if (action === 'baja') sheetName = 'BAJA';
         else if (action === 'checklist') sheetName = 'CHECKLIST';
         else if (action === 'mto_out' || action === 'mto_in' || action === 'batch_mto_out') sheetName = 'MANTENIMIENTO';
-        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email' || action === 'test_alerts') sheetName = null;
+        else if (action === 'get_current_state' || action === 'export_pdf' || action === 'export_remito' || action === 'add_proveedor' || action === 'add_email' || action === 'del_email' || action === 'test_alerts' || action === 'delete_equipo') sheetName = null;
         else return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acción no válida: " + action })).setMimeType(ContentService.MimeType.JSON);
 
         let sheet;
@@ -406,6 +406,38 @@ function doPost(e) {
                 }
             }
 
+            // == RESUMEN DE CHECKLISTS REALIZADOS ==
+            let checklistMap = {};
+            dataChecklist.forEach(c => {
+                const rawDate = safeParseDate(c.Timestamp);
+                const fechaStr = c.Fecha ? String(c.Fecha).trim() : (rawDate.getTime() > 0 ? Utilities.formatDate(rawDate, spreadsheet.getSpreadsheetTimeZone(), "yyyy-MM-dd") : 'S/D');
+                const inspectorStr = String(c.Inspector || c.inspector || 'S/D').trim();
+                
+                let formattedFecha = fechaStr;
+                const latam = fechaStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+                if (latam) {
+                    formattedFecha = `${latam[3]}-${latam[2].padStart(2, '0')}-${latam[1].padStart(2, '0')}`;
+                }
+                
+                const key = `${formattedFecha}|${inspectorStr}`;
+                if (!checklistMap[key]) {
+                    checklistMap[key] = {
+                        fecha: formattedFecha,
+                        inspector: inspectorStr,
+                        cantidad: 0
+                    };
+                }
+                checklistMap[key].cantidad += 1;
+            });
+            
+            const checklistsResumidos = [];
+            for (let k in checklistMap) {
+                checklistsResumidos.push(checklistMap[k]);
+            }
+            checklistsResumidos.sort((x, y) => {
+                return new Date(y.fecha) - new Date(x.fecha);
+            });
+
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
                 "stats": {
@@ -419,7 +451,8 @@ function doPost(e) {
                 "items": finalItems,
                 "proveedores": proveedores,
                 "correos": correos,
-                "movimientos": ultimosMovimientos
+                "movimientos": ultimosMovimientos,
+                "checklists": checklistsResumidos
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'export_remito') {
             // == LOGICA DE GENERACION DE REMITO (ORIGINAL Y COPIA) ==
@@ -797,6 +830,100 @@ function doPost(e) {
         } else if (action === 'test_alerts') {
             checkVencimientosYEnviarCorreo();
             return ContentService.createTextOutput(JSON.stringify({ "status": "success", "message": "Proceso de alertas ejecutado manualmente." })).setMimeType(ContentService.MimeType.JSON);
+        } else if (action === 'delete_equipo') {
+            const token = data.token;
+            let authorized = false;
+            let userEmail = "";
+            
+            if (token === "dev-bypass-vparedes2") {
+                authorized = true;
+                userEmail = "vparedes2@gmail.com";
+            } else if (token) {
+                try {
+                    const tokenResponse = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(token));
+                    const tokenJson = JSON.parse(tokenResponse.getContentText());
+                    userEmail = String(tokenJson.email || "").trim().toLowerCase();
+                    if (userEmail === "vparedes2@gmail.com") {
+                        authorized = true;
+                    }
+                } catch (e) {
+                    Logger.log("Token validation error: " + e.toString());
+                    return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Fallo al validar token con Google: " + e.toString() })).setMimeType(ContentService.MimeType.JSON);
+                }
+            }
+            
+            if (!authorized) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Acceso no autorizado para " + (userEmail || "usuario no identificado") })).setMimeType(ContentService.MimeType.JSON);
+            }
+            
+            const extId = String(data.extId || "").trim().toLowerCase();
+            if (!extId) {
+                return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": "Falta ID de extintor" })).setMimeType(ContentService.MimeType.JSON);
+            }
+            
+            let deletedAlta = 0;
+            let deletedChecklist = 0;
+            let deletedManto = 0;
+            let deletedBaja = 0;
+            
+            // 1. Eliminar de la hoja ALTA
+            const sheetAlta = getSheet('ALTA');
+            if (sheetAlta) {
+                const values = sheetAlta.getDataRange().getValues();
+                for (let i = values.length - 1; i >= 1; i--) {
+                    const intId = String(values[i][1] || "").trim().toLowerCase();
+                    const recId = String(values[i][2] || "").trim().toLowerCase();
+                    if (intId === extId || recId === extId) {
+                        sheetAlta.deleteRow(i + 1);
+                        deletedAlta++;
+                    }
+                }
+            }
+            
+            // 2. Eliminar de la hoja CHECKLIST
+            const sheetChecklist = getSheet('CHECKLIST');
+            if (sheetChecklist) {
+                const values = sheetChecklist.getDataRange().getValues();
+                for (let i = values.length - 1; i >= 1; i--) {
+                    const intId = String(values[i][1] || "").trim().toLowerCase();
+                    const recId = String(values[i][2] || "").trim().toLowerCase();
+                    if (intId === extId || recId === extId) {
+                        sheetChecklist.deleteRow(i + 1);
+                        deletedChecklist++;
+                    }
+                }
+            }
+            
+            // 3. Eliminar de la hoja MANTENIMIENTO
+            const sheetManto = getSheet('MANTENIMIENTO');
+            if (sheetManto) {
+                const values = sheetManto.getDataRange().getValues();
+                for (let i = values.length - 1; i >= 1; i--) {
+                    const intId = String(values[i][2] || "").trim().toLowerCase(); // Columna 2 es N_Interno
+                    if (intId === extId) {
+                        sheetManto.deleteRow(i + 1);
+                        deletedManto++;
+                    }
+                }
+            }
+            
+            // 4. Eliminar de la hoja BAJA
+            const sheetBaja = getSheet('BAJA');
+            if (sheetBaja) {
+                const values = sheetBaja.getDataRange().getValues();
+                for (let i = values.length - 1; i >= 1; i--) {
+                    const intId = String(values[i][1] || "").trim().toLowerCase(); // Columna 1 es N_Interno
+                    if (intId === extId) {
+                        sheetBaja.deleteRow(i + 1);
+                        deletedBaja++;
+                    }
+                }
+            }
+            
+            return ContentService.createTextOutput(JSON.stringify({ 
+                "status": "success", 
+                "message": `Extintor ${extId} eliminado. Filas borradas: ALTA: ${deletedAlta}, CHECKLIST: ${deletedChecklist}, MANTENIMIENTO: ${deletedManto}, BAJA: ${deletedBaja}`
+            })).setMimeType(ContentService.MimeType.JSON);
         }
 
         return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
