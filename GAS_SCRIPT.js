@@ -793,7 +793,7 @@ function doPost(e) {
             return ContentService.createTextOutput(JSON.stringify({
                 "status": "success",
                 "pdfBase64": base64Data,
-                "fileName": "Reporte_Extintores_" + targetDateStr + ".pdf"
+                "fileName": "Checklist_" + targetDateStr + "_" + String(data.inspector || "General").trim().replace(/\s+/g, "_") + ".pdf"
             })).setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'add_proveedor') {
             let sheet = getSheet('PROVEEDORES');

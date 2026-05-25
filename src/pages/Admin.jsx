@@ -442,7 +442,7 @@ export default function Admin() {
                                 </button>
                                 <a
                                     href={activeChecklistPdf.url}
-                                    download={`Checklist_Inspeccion_${activeChecklistPdf.date}_${activeChecklistPdf.inspector.replace(/\s+/g, '_')}.pdf`}
+                                    download={`Checklist_${activeChecklistPdf.date}_${activeChecklistPdf.inspector.trim().replace(/\s+/g, '_')}.pdf`}
                                     className="btn btn-primary"
                                     style={{ flex: 1, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 >

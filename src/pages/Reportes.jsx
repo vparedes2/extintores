@@ -117,7 +117,7 @@ export default function Reportes() {
                             </button>
                             <a
                                 href={pdfUrl}
-                                download={`Reporte_${fecha}.pdf`}
+                                download={`Checklist_${fecha}_${inspector.trim().replace(/\s+/g, '_')}.pdf`}
                                 className="btn btn-primary"
                                 style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
                             >
