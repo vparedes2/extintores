@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
     // Ignoramos process.env.GAS_URL momentáneamente porque en Vercel puede haber quedado la URL vieja cargada como variable de entorno,
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5x_axyE6Bxw73_YNSzTPc9ptopMlrmD4ItTuMK8X1-Gj_xIQp8pqy4KPy5HUJ5Kz89Q/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzdSfSIwZui_4amatKDaCO3TNlGdqoKzP73wKL1bFMU59xOlw1l56tRKBRN2fq5g4mTSw/exec";
 
     try {
         if (req.method !== "POST") {
