@@ -995,12 +995,35 @@ function doOptions(e) {
 }
 
 // ===============================================
-// CRONJOB: ALERTA DE VENCIMIENTOS (DIARIO)
+// CRONJOB: ALERTA DE VENCIMIENTOS (SEMANAL - LUNES 12:00)
 // ===============================================
 // INSTRUCCIONES DE ACTIVACIÓN:
-// 1. En el editor de Apps Script, ve a "Activadores" (icono de Reloj).
-// 2. "+ Añadir activador" -> Función: checkVencimientosYEnviarCorreo
-// 3. Fuente de evento: Según tiempo -> Por día -> Elige una hora (ej. 8am).
+// Opción A (Recomendado/Automático):
+//   Ejecuta la función `configurarActivadorSemanal` una sola vez en el editor para crear el activador.
+// Opción B (Manual):
+//   1. En el editor de Apps Script, ve a "Activadores" (icono de Reloj en el menú lateral izquierdo).
+//   2. "+ Añadir activador" (abajo a la derecha) -> Función: checkVencimientosYEnviarCorreo
+//   3. Fuente de evento: Según tiempo.
+//   4. Tipo de activador: Por semana.
+//   5. Día de la semana: Todos los lunes.
+//   6. Hora: De 12:00 a 13:00.
+// ===============================================
+function configurarActivadorSemanal() {
+    const triggers = ScriptApp.getProjectTriggers();
+    for (let i = 0; i < triggers.length; i++) {
+        if (triggers[i].getHandlerFunction() === "checkVencimientosYEnviarCorreo") {
+            ScriptApp.deleteTrigger(triggers[i]);
+        }
+    }
+    ScriptApp.newTrigger("checkVencimientosYEnviarCorreo")
+        .timeBased()
+        .onWeekDay(ScriptApp.WeekDay.MONDAY)
+        .atHour(12)
+        .nearMinute(0)
+        .create();
+    Logger.log("Activador configurado con éxito: checkVencimientosYEnviarCorreo se ejecutará todos los lunes a las 12:00.");
+}
+
 function checkVencimientosYEnviarCorreo() {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();

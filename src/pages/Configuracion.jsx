@@ -84,7 +84,7 @@ export default function Configuracion() {
             <header style={{ marginBottom: '2rem' }}>
                 <h2>Configuración</h2>
                 <p style={{ color: 'var(--text-muted)' }}>
-                    Gestiona los destinatarios de las <b>Alertas de Vencimiento</b> (a 30 días) enviadas diariamente por el sistema automático.
+                    Gestiona los destinatarios de las <b>Alertas de Vencimiento</b> (a 30 días) enviadas semanalmente (todos los lunes a las 12:00) por el sistema automático.
                 </p>
             </header>
 
@@ -139,7 +139,7 @@ export default function Configuracion() {
                     </h4>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                         Usa este botón para forzar el envío de mails en este momento. 
-                        <b> Nota:</b> Para que los mails lleguen solos cada día, debés configurar un "Activador" (Trigger) en Google Apps Script apuntando a la función <code>checkVencimientosYEnviarCorreo</code>.
+                        <b> Nota:</b> Para que los mails lleguen solos todos los lunes a las 12:00, debés configurar un "Activador" (Trigger) semanal en Google Apps Script apuntando a la función <code>checkVencimientosYEnviarCorreo</code>.
                     </p>
                     <button 
                         onClick={handleTestAlerts} 
